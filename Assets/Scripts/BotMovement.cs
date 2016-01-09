@@ -40,7 +40,7 @@ public class BotMovement : MonoBehaviour
 	private Renderer myColor;
 	private RaycastHit hit;
 	private GameObject ourhero;
-	private Camera maincamera;
+//	private Camera maincamera;
 	private PlayerMovement playermovement;
 	private GameObject level;
 	private SetUpBots setupbots;
@@ -54,7 +54,7 @@ public class BotMovement : MonoBehaviour
 		audioSource = GetComponent<AudioSource>();
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
-		maincamera = playermovement.mainCamera;
+//		maincamera = playermovement.mainCamera;
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots>();
 		notEnded = true;
@@ -68,11 +68,11 @@ public class BotMovement : MonoBehaviour
 				if (brainPointer >= botBrain.Length) brainPointer = 0;
 				//bots hit hard enough to crash get discombot-ulated
 				audioSource.clip = BotCrash;
-				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.1f);
-				audioSource.volume = 0.3f + ((col.relativeVelocity.magnitude - 25f) * 0.02f);
-				if (col.relativeVelocity.magnitude > 45f) {
+				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+				audioSource.volume = 0.3f + ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+				if (col.relativeVelocity.magnitude > 60f) {
 					audioSource.clip = BotCrashTinkle;
-					audioSource.pitch = 1.0f - ((col.relativeVelocity.magnitude) * 0.001f);
+					audioSource.pitch = 1.0f - ((col.relativeVelocity.magnitude) * 0.0005f);
 					if (audioSource.pitch < 0.2f) audioSource.pitch = 0.2f;
 					audioSource.volume = 1f;
 					if (playermovement.yourMatch == yourMatch) {
@@ -86,7 +86,7 @@ public class BotMovement : MonoBehaviour
 						Destroy (playermovement);
 						//you are REKKT too!
 						audioSource.clip = BotCrashTinkle;
-						audioSource.pitch = 0.1f;
+						audioSource.pitch = 0.08f;
 						audioSource.volume = 1f;
 						//override with an epic fail crash
 					} else {
@@ -139,21 +139,22 @@ public class BotMovement : MonoBehaviour
 			BotMovement botmovement = col.gameObject.GetComponent<BotMovement>();
 			if (botmovement != null) {
 				if (botmovement.yourMatch == yourMatch) {
-					botmovement.brainPointer = Math.Abs (brainPointer - 1);
-					//offset-by-one pointer for conga line effect
+					botmovement.brainPointer = brainPointer;
 					botmovement.step = 9999;
 					//step is always set to what will engage the brain and do a new pointer
-					if (notEnded && withinRange) {
-						if (audioSource.clip != BotBeep) audioSource.clip = BotBeep;
-						audioSource.volume = 0.8f;
-						brainR = botBrain [brainPointer].r;
-						brainG = botBrain [brainPointer].g;
-						brainB = botBrain [brainPointer].b;
-						float voicePitch = Mathf.Abs(2.9f - ((brainR + brainG + brainB) * 0.0045f));
-						//bounce the subsonic notes back up again
-						audioSource.pitch = voicePitch + 0.1f;
-						if (!audioSource.isPlaying) audioSource.Play ();
-					//bot makes a remark, unless it's too far to hear
+					if (Physics.Raycast (transform.position, ourhero.transform.position, out hit))
+						if (hit.distance > (Vector3.Distance(transform.position, ourhero.transform.position)-1f))
+							if (notEnded && withinRange) {
+							if (audioSource.clip != BotBeep) audioSource.clip = BotBeep;
+							audioSource.volume = 0.3f;
+							brainR = botBrain [brainPointer].r;
+							brainG = botBrain [brainPointer].g;
+							brainB = botBrain [brainPointer].b;
+							float voicePitch = Mathf.Abs(2.9f - ((brainR + brainG + brainB) * 0.0045f));
+							//bounce the subsonic notes back up again
+							audioSource.pitch = voicePitch + 0.1f;
+							if (!audioSource.isPlaying) audioSource.Play ();
+							//bot makes a remark, unless it's too far to hear
 					}
 				}
 				//upon hitting another bot, if they're the same, they sync brainwaves.
@@ -226,6 +227,13 @@ public class BotMovement : MonoBehaviour
 
 		rigidBody.AddForce (lerpedMove/adjacentSolid, ForceMode.Impulse);
 		//apply the attempted bot move as adjusted
+		if ((Mathf.Abs(rigidBody.velocity.magnitude) < 0.5f) && (Mathf.Abs(rigidBody.velocity.magnitude) > 0.01f))
+			playermovement.creepRotAngle += 0.0001f;
+		if (playermovement.creepRotAngle > 360f)
+			playermovement.creepRotAngle -= 360f;
+		//this is an interesting one. The overall whirl of the bots depends on how many of them feel stuck.
+		//If most of them can move freely, it stays static. If lots are stuck, then the whole thing might reverse itself rather quick,
+		//then stop once they're freed up. Statistical density FTW!
 
 		if (botBrain.Length > 1) StartCoroutine ("SlowUpdates");
 		//our heavier processing doesn't update quickly
@@ -238,6 +246,7 @@ public class BotMovement : MonoBehaviour
 		step += 1;
 		step += (botBrain [brainPointer].r / 85);
 		//red bots are more agitated, to a point.
+
 		if ((step > (350 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.volume = 0.0f;
 		//staccato: the bots can and do shorten their beeps. Green means perky short beeps, no green means longer
 
@@ -271,27 +280,29 @@ public class BotMovement : MonoBehaviour
 			brainB = botBrain [brainPointer].b;
 			//we establish a new target location based on this color
 
-			if (notEnded && withinRange) {
-				if (audioSource.clip != BotBeep) audioSource.clip = BotBeep;
-				audioSource.volume = 0.2f + ((botBrain [brainPointer].r + botBrain [brainPointer].g) / 1500f);
-				//yellowness is noisiness, they get loud when they're yellower. Also makes the hyper ones noisier.
-				//extreme loudness will make them blink!
-				float voicePitch = Mathf.Abs(2.9f - ((brainR + brainG + brainB) * 0.0045f));
-				//bounce the subsonic notes back up again
-				audioSource.pitch = voicePitch + 0.1f;
-				if (!audioSource.isPlaying) audioSource.Play ();
-				//bot makes a remark
-			}
+			if (Physics.Raycast (transform.position, ourhero.transform.position, out hit))
+				if (hit.distance > (Vector3.Distance(transform.position, ourhero.transform.position)-1f))
+					if (notEnded && withinRange) {
+						if (audioSource.clip != BotBeep) audioSource.clip = BotBeep;
+						audioSource.volume = 0.2f + ((botBrain [brainPointer].r + botBrain [brainPointer].g) / 2500f);
+						//yellowness is noisiness, they get loud when they're yellower. Also makes the hyper ones noisier.
+						//extreme loudness will make them blink!
+						float voicePitch = Mathf.Abs(2.8f - ((brainR + brainG + brainB) * 0.0042f));
+						//bounce the subsonic notes back up again
+						audioSource.pitch = voicePitch + 0.1f;
+						if (!audioSource.isPlaying) audioSource.Play ();
+						//bot makes a remark
+				} else audioSource.Stop();
 
 			rigidBody.angularVelocity = Vector3.zero;
 			transform.LookAt (transform.localPosition + new Vector3(brainR - 127f, brainG - 127f, brainB - 127f));
 			Color c = new Color (brainR, brainG, brainB);
 			SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 			//this is giving us 360 degree hue, and then saturation and luminance.
-			float botDistance = 1000f - (Mathf.Abs(color.s)*500f);
-			Vector3 spawnLocation = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * color.h) * botDistance), 1f, 2000f + (Mathf.Cos (Mathf.PI / 180f * color.h) * botDistance));
-			//place bot
-
+			float botDistance = (Mathf.Abs(color.s)+1f) * playermovement.creepToRange;
+			float adjustedHueAngle = color.h + playermovement.creepRotAngle;
+			Vector3 spawnLocation = new Vector3 (1580f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 1f, 2190f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+			//aim bot at target
 			if (Physics.Raycast (spawnLocation, Vector3.up, out hit))
 				botTarget = hit.point + Vector3.up;
 			else
@@ -337,8 +348,14 @@ public class BotMovement : MonoBehaviour
 		//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 		if (playermovement.yourMatch == yourMatch) {
-			playermovement.yourMatchDistance = Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position))*32f;
+			playermovement.yourMatchDistance = Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position))*8f;
+			playermovement.yourMatchOccluded = true;
 			//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
+			if (Physics.Raycast (transform.position, ourhero.transform.position, out hit))
+				if (hit.distance > (Vector3.Distance(transform.position, ourhero.transform.position)-1f))
+					playermovement.yourMatchOccluded = false;
+			//by doing this, we can see whether there's anything in the way of the ray between match and player
+			//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.
 		} else {
 			if (distance < playermovement.activityRange) {
 				rigidBody.isKinematic = false;
@@ -356,11 +373,11 @@ public class BotMovement : MonoBehaviour
 				withinRange = false;
 				audioSource.Stop();
 				//thus if we have bots far out of range they'll totally avoid making useless engine functions happen
-				if (distance > (playermovement.fps * 50)) {
+				if (distance > (playermovement.fps * 100)) {
 					Destroy(this.transform.gameObject);
 					//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
-					//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 500 away,
-					//at full 60fps vSync you have to be 3000 away to be culled. And of course unsynced rapidly makes them uncullable.
+					//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 1000 away,
+					//at full 60fps vSync you have to be 6000 away to be culled. And of course unsynced rapidly makes them uncullable.
 
 				}
 			}

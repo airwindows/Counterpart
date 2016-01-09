@@ -41,11 +41,6 @@ public class SetUpBots : MonoBehaviour {
 			else SpawnBot (i, true);
 		}
 		//we generate one of every bot, to start off with
-		for (int i = 0; i < 200; i++) {
-			int j = Random.Range(0, botTexture.Length);
-			if (j != yourMatch) SpawnBot (j, false);
-		}
-		//then we randomly generate another 200 just so they can bounce off the first ones through the physics engine, for herd activity
 		//The rest will be generated on the fly by the program, until it hits framerate and can't maintain 60fps.
 	}
 	
@@ -73,13 +68,14 @@ public class SetUpBots : MonoBehaviour {
 		botmovement.yourMatch = index;
 		//and the bots must know what number they are, because you'll match with them
 
-		int step = 0; //they run in herds, at least the initial ones
+		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
 		Color c = new Color(botmovement.botBrain[step].r, botmovement.botBrain[step].g, botmovement.botBrain[step].b);
 		HSLColor color = HSLColor.FromRGBA(c); //this is giving us 360 degree hue, and then saturation and luminance.
 
-		float botDistance = 1000f - (Mathf.Abs(color.s)*500f);
+		float botDistance = (Mathf.Abs(color.s)+1f) * playermovement.creepToRange;
 		if (onEdge) botDistance = 1800f;
-		Vector3 spawnLocation = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * color.h) * botDistance), 1f, 2000f + (Mathf.Cos (Mathf.PI / 180f * color.h) * botDistance));
+		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
+		Vector3 spawnLocation = new Vector3 (1580f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 1f, 2190f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 
 		if (Physics.Raycast (spawnLocation, Vector3.up, out hit)) spawnLocation = hit.point + Vector3.up;
 		myBot.transform.position = spawnLocation;
@@ -95,7 +91,7 @@ public class SetUpBots : MonoBehaviour {
 
 		botmovement.botTarget = spawnLocation;
 		botmovement.step = 1;
-		botmovement.brainPointer = step;
+		botmovement.brainPointer = Random.Range(0, botmovement.botBrain.Length);
 		botmovement.withinRange = true;
 		//we randomize the step so the bot pairs aren't synced to start with
 		myBot.transform.SetParent (botParent.transform);

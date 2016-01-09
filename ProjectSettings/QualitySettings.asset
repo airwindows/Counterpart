@@ -14,13 +14,12 @@ QualitySettings:
     shadowProjection: 1
     shadowCascades: 1
     shadowDistance: 70
-    shadowNearPlaneOffset: 2
     shadowCascade2Split: .333333343
     shadowCascade4Split: {x: .0666666701, y: .200000003, z: .466666669}
     blendWeights: 1
     textureQuality: 0
     anisotropicTextures: 0
-    antiAliasing: 2
+    antiAliasing: 4
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -38,13 +37,12 @@ QualitySettings:
     shadowProjection: 1
     shadowCascades: 1
     shadowDistance: 70
-    shadowNearPlaneOffset: 2
     shadowCascade2Split: .333333343
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
     anisotropicTextures: 0
-    antiAliasing: 2
+    antiAliasing: 4
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -62,13 +60,12 @@ QualitySettings:
     shadowProjection: 1
     shadowCascades: 1
     shadowDistance: 70
-    shadowNearPlaneOffset: 2
     shadowCascade2Split: .333333343
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
     anisotropicTextures: 0
-    antiAliasing: 2
+    antiAliasing: 4
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -86,13 +83,12 @@ QualitySettings:
     shadowProjection: 1
     shadowCascades: 1
     shadowDistance: 70
-    shadowNearPlaneOffset: 2
     shadowCascade2Split: .333333343
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
     anisotropicTextures: 0
-    antiAliasing: 2
+    antiAliasing: 4
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0

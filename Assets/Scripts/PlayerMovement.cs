@@ -25,13 +25,14 @@ public class PlayerMovement : MonoBehaviour
 	public AnimationCurve slopeCurveModifier = new AnimationCurve (new Keyframe (-90.0f, 1.0f), new Keyframe (0.0f, 1.0f), new Keyframe (90.0f, 0.0f));
 	public int yourMatch;
 	public Color32[] yourBrain;
-	public float activityRange = 1000f;
+	public float activityRange = 10f;
 	private int brainPointer;
-	private float altitude = 1;
+	private float altitude = 1f;
 	private Rigidbody rigidBody;
 	private SphereCollider sphereCollider;
 	private AudioSource audiosource;
-	public float yourMatchDistance;
+	public float yourMatchDistance = 9999;
+	public bool yourMatchOccluded = true;
 	private int pingTimer = 2;
 	private BackgroundSound backgroundSound;
 	public AudioClip botBeep;
@@ -62,10 +63,13 @@ public class PlayerMovement : MonoBehaviour
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private RaycastHit hit;
-	private float nearGround = 1;
-	private float chaseTilt = 0;
-	private float speedSmoothing = 0;
-	float cameraZoom = 0;
+	private float nearGround = 1f;
+	private float chaseTilt = 0f;
+	private float speedSmoothing = 0f;
+	private float cameraZoom = 0f;
+	public float creepToRange = 1500f;
+	public float creepRotAngle = 1f;
+
 
 	void Awake ()
 	{
@@ -201,7 +205,17 @@ public class PlayerMovement : MonoBehaviour
 		if (pingTimer == 0) {
 			if (ourlevel.GetComponent<SetUpBots>().gameEnded == false) {
 				if (audiosource.clip != botBeep) audiosource.clip = botBeep;
-				audiosource.reverbZoneMix = 2f;
+				if (yourMatchOccluded){
+					audiosource.volume = 0.2f;
+					audiosource.reverbZoneMix = 2f;
+				} else {
+					audiosource.volume = 0.2f;
+					//we will keep it the same so it sounds the same: increasing volume
+					//caused it to sound different inc. in the reverb
+					float verbZone = 2f - (70f / yourMatchDistance);
+					if (verbZone < 0f) verbZone = 0f;
+					audiosource.reverbZoneMix = verbZone;
+				}
 				audiosource.Play ();
 			}
 		}
@@ -270,7 +284,7 @@ public class PlayerMovement : MonoBehaviour
 		//5 controls the top speed, 0.2 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
-
+		if (adjacentSolid < 1f) adjacentSolid = 1f; //insanity check
 		desiredMove /= (adjacentSolid + mouseDrag);
 		//we're adding the move to the extent that we're near a surface
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
@@ -279,9 +293,8 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 		//apply the player move
 
-		speedSmoothing = 2f / (rigidBody.velocity.magnitude + 0.2f);
-		if (speedSmoothing > 1f) speedSmoothing = 1f / speedSmoothing;
-		//this makes it settle down when it's very slow
+		speedSmoothing = 1.3f / (rigidBody.velocity.magnitude + 5f);
+		//this makes it settle down when moving real fast
 		float tempSpeedRelatedBank = ((maximumBank/momentum)/Mathf.Sqrt(speedSmoothing)) / Mathf.Pow (altitude, 3f);
 		//this complicated mess gives us bank angles that aren't directly related to how jittery things are
 		
@@ -306,6 +319,14 @@ public class PlayerMovement : MonoBehaviour
 			transform.position = new Vector3 (1, transform.position.y, transform.position.z);
 			rigidBody.velocity = new Vector3 (Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
 		}
+
+		if (Cursor.lockState != CursorLockMode.Locked) {
+			Cursor.lockState = CursorLockMode.Locked;
+			Cursor.visible = false;
+		}
+		//the notorious cursor code! Kills builds on Unity 5.2 and up
+
+
 		cameraZoom = Mathf.Sqrt (rigidBody.velocity.magnitude + 1f);
 		headlight.spotAngle = (baseFOV*1.5f) + cameraZoom;
 		//control the headlight to give the impression of tunnel vision at speed
@@ -351,10 +372,11 @@ public class PlayerMovement : MonoBehaviour
 		//it insists on finding gameObjects when we've killed bots, so we force it to be what we want
 		//with this we can tweak sensitivity to things like bot "activityRange"
 
-		if ((fps > 59f) && botNumber < totalBotNumber) {
+		if ((fps > 30f) && botNumber < totalBotNumber) {
 				ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is 60. Works for locked framerate too
+		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
+
 
 		if (fps != prevFps) {
 			fpsMesh.text = string.Format ("fps:{0:0.}", fps);
@@ -367,9 +389,15 @@ public class PlayerMovement : MonoBehaviour
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 
-		activityRange = fps * 20f;
-		//we are dynamically ramping the zone where we automatically park bots. If we're getting 10fps, we park everything outside 200 distance.
-		//At full 60 fps, we park outside 1200 which is well outside visual range much less hearing.
+		creepToRange -= 0.02f;
+		if (creepToRange < 1f) creepToRange = 1500f;
+		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
+		//More interesting than the following the player distance.
+		Debug.Log (creepToRange);
+
+		activityRange = fps * 8f;
+		if (activityRange > 480f) activityRange = 480f;
+		//we are dynamically ramping the zone where we automatically park bots.
 
 		yield return new WaitForSeconds(.016f);
 	}

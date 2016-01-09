@@ -17,13 +17,14 @@ GraphicsSettings:
   - {fileID: 15106, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 10770, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 10782, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 4800000, guid: 3946536a542444dc88f2d7e5e640d5ad, type: 3}
   m_PreloadedShaders: []
-  m_LightmapStripping: 0
+  m_LightmapStripping: 1
   m_LightmapKeepPlain: 1
   m_LightmapKeepDirCombined: 1
   m_LightmapKeepDirSeparate: 1
   m_LightmapKeepDynamic: 1
-  m_FogStripping: 0
+  m_FogStripping: 1
   m_FogKeepLinear: 1
   m_FogKeepExp: 1
   m_FogKeepExp2: 1
