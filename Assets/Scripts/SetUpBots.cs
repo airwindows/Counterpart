@@ -9,6 +9,7 @@ public class SetUpBots : MonoBehaviour {
 	private PlayerMovement playermovement;
 	public Texture2D[] botTexture;
 	public bool gameEnded = true;
+	public bool killed = true;
 	public int yourMatch;
 
 
@@ -19,6 +20,7 @@ public class SetUpBots : MonoBehaviour {
 	void Start () {
 
 		gameEnded = false;
+		killed = false;
 		//we've only just begun!
 		botParent = GameObject.FindGameObjectWithTag ("AllBots");
 

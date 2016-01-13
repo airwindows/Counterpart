@@ -59,6 +59,7 @@ public class PlayerMovement : MonoBehaviour
 	public int botNumber = 500;
 	private int prevBotNumber = 500;
 	public int totalBotNumber = 500;
+	public int chooseGuardian = 0;
 	private int blurHack;
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
@@ -67,7 +68,9 @@ public class PlayerMovement : MonoBehaviour
 	private float chaseTilt = 0f;
 	private float speedSmoothing = 0f;
 	private float cameraZoom = 0f;
-	public float creepToRange = 1500f;
+	public float timeBetweenGuardians = 1f;
+	public float probableGuilt = 0f;
+	public float creepToRange = 1800f;
 	public float creepRotAngle = 1f;
 
 
@@ -200,26 +203,33 @@ public class PlayerMovement : MonoBehaviour
 		desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
 
 		pingTimer += 1;
-		audiosource.pitch = 3f / ((pingTimer + 64f) / 65f);
 		if (pingTimer > yourMatchDistance) pingTimer = 0;
-		if (pingTimer == 0) {
-			if (ourlevel.GetComponent<SetUpBots>().gameEnded == false) {
-				if (audiosource.clip != botBeep) audiosource.clip = botBeep;
-				if (yourMatchOccluded){
-					audiosource.volume = 0.2f;
-					audiosource.reverbZoneMix = 2f;
-				} else {
-					audiosource.volume = 0.2f;
-					//we will keep it the same so it sounds the same: increasing volume
-					//caused it to sound different inc. in the reverb
-					float verbZone = 2f - (70f / yourMatchDistance);
-					if (verbZone < 0f) verbZone = 0f;
-					audiosource.reverbZoneMix = verbZone;
+
+		if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
+			//we are playing the smashing sounds of the giant guardians
+		} else {
+			audiosource.pitch = 3f / ((pingTimer + 64f) / 65f);
+			if (pingTimer == 0) {
+				if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
+					if (audiosource.clip != botBeep)
+						audiosource.clip = botBeep;
+					if (yourMatchOccluded) {
+						audiosource.volume = 0.2f;
+						audiosource.reverbZoneMix = 2f;
+					} else {
+						audiosource.volume = 0.2f;
+						//we will keep it the same so it sounds the same: increasing volume
+						//caused it to sound different inc. in the reverb
+						float verbZone = 2f - (70f / yourMatchDistance);
+						if (verbZone < 0f)
+							verbZone = 0f;
+						audiosource.reverbZoneMix = verbZone;
+					}
+					audiosource.Play ();
 				}
-				audiosource.Play ();
 			}
+			//this is our geiger counter for our bot
 		}
-		//this is our geiger counter for our bot
 
 
 		StartCoroutine ("SlowUpdates");
@@ -293,7 +303,7 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 		//apply the player move
 
-		speedSmoothing = 1.3f / (rigidBody.velocity.magnitude + 5f);
+		speedSmoothing = 1.5f / (rigidBody.velocity.magnitude + 4f);
 		//this makes it settle down when moving real fast
 		float tempSpeedRelatedBank = ((maximumBank/momentum)/Mathf.Sqrt(speedSmoothing)) / Mathf.Pow (altitude, 3f);
 		//this complicated mess gives us bank angles that aren't directly related to how jittery things are
@@ -325,6 +335,10 @@ public class PlayerMovement : MonoBehaviour
 			Cursor.visible = false;
 		}
 		//the notorious cursor code! Kills builds on Unity 5.2 and up
+
+		timeBetweenGuardians *= 0.9997f;
+		probableGuilt *= 0.9997f;
+		//with this factor we scale how sensitive guardians are to bots bumping each other
 
 
 		cameraZoom = Mathf.Sqrt (rigidBody.velocity.magnitude + 1f);
@@ -389,11 +403,14 @@ public class PlayerMovement : MonoBehaviour
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 
-		creepToRange -= 0.02f;
-		if (creepToRange < 1f) creepToRange = 1500f;
+		chooseGuardian += 1;
+		if (chooseGuardian > 3) chooseGuardian = 0;
+		//we'll just keep this spinning, it's as good as randomizing but much cheaper
+
+		creepToRange -= 0.01f;
+		if (creepToRange < 1f) creepToRange = 1800f;
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
-		Debug.Log (creepToRange);
 
 		activityRange = fps * 8f;
 		if (activityRange > 480f) activityRange = 480f;

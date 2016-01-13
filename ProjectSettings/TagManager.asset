@@ -9,6 +9,12 @@ TagManager:
   - Level
   - AllBots
   - distanceMesh
+  - GuardianN
+  - GuardianS
+  - GuardianE
+  - GuardianW
+  - Terrain
+  - counterpartlogo
   layers:
   - Default
   - TransparentFX

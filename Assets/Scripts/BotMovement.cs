@@ -40,10 +40,20 @@ public class BotMovement : MonoBehaviour
 	private Renderer myColor;
 	private RaycastHit hit;
 	private GameObject ourhero;
-//	private Camera maincamera;
+	private float guilt = 0f;
 	private PlayerMovement playermovement;
+	private GuardianMovement guardianNmovement;
+	private GuardianMovement guardianSmovement;
+	private GuardianMovement guardianEmovement;
+	private GuardianMovement guardianWmovement;
+	private GuardianMovement targetmovement;
 	private GameObject level;
+	private GameObject guardianN;
+	private GameObject guardianS;
+	private GameObject guardianE;
+	private GameObject guardianW;
 	private SetUpBots setupbots;
+	private GameObject logo;
 
 	void Awake ()
 	{
@@ -56,7 +66,22 @@ public class BotMovement : MonoBehaviour
 		playermovement = ourhero.GetComponent<PlayerMovement>();
 //		maincamera = playermovement.mainCamera;
 		level = GameObject.FindGameObjectWithTag ("Level");
+		guardianN = GameObject.FindGameObjectWithTag ("GuardianN");
+		guardianS = GameObject.FindGameObjectWithTag ("GuardianS");
+		guardianE = GameObject.FindGameObjectWithTag ("GuardianE");
+		guardianW = GameObject.FindGameObjectWithTag ("GuardianW");
+		guardianNmovement = guardianN.GetComponent<GuardianMovement>();
+		guardianSmovement = guardianS.GetComponent<GuardianMovement>();
+		guardianEmovement = guardianE.GetComponent<GuardianMovement>();
+		guardianWmovement = guardianW.GetComponent<GuardianMovement>();
+		targetmovement = null;
+		//we assign this so that the bot can keep sending whatever location data to whichever AI
+		//we'll check for null to see if it's ever been directed to a target.
+		//should be pretty cheap to keep references for this stuff around
+		//using this, we can punch a target or chase behavior into a specific guardian,
+		//without it having to go through all the bots when it needs to react to a specific bot.
 		setupbots = level.GetComponent<SetUpBots>();
+		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		notEnded = true;
 	}
 
@@ -64,14 +89,48 @@ public class BotMovement : MonoBehaviour
 		if (col.gameObject.tag == "Player" && notEnded) {
 
 			if (col.relativeVelocity.magnitude > 25f) {
+				playermovement.probableGuilt = Mathf.Lerp(playermovement.probableGuilt, 1f, 0.5f);
+				guilt = playermovement.probableGuilt;
+				//the more you actually bonk the bots, the closer the guardians will try to get to you, even if you don't kill them
+				playermovement.timeBetweenGuardians = 1f;
+				//you bonked a bot so the guardian will get between you
 				brainPointer += 1;
 				if (brainPointer >= botBrain.Length) brainPointer = 0;
 				//bots hit hard enough to crash get discombot-ulated
 				audioSource.clip = BotCrash;
+				audioSource.reverbZoneMix = 0f;
+				audioSource.priority = 100;
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 				audioSource.volume = 0.3f + ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+
+				targetmovement = guardianNmovement;
+				float nearestGuardian = Vector3.Distance(ourhero.transform.position, guardianN.transform.position);
+				if (Vector3.Distance(ourhero.transform.position, guardianS.transform.position) < nearestGuardian){
+					nearestGuardian = Vector3.Distance(ourhero.transform.position, guardianS.transform.position);
+					targetmovement = guardianSmovement;
+				}
+				if (Vector3.Distance(ourhero.transform.position, guardianE.transform.position) < nearestGuardian){
+					nearestGuardian = Vector3.Distance(ourhero.transform.position, guardianE.transform.position);
+					targetmovement = guardianEmovement;
+				}
+				if (Vector3.Distance(ourhero.transform.position, guardianW.transform.position) < nearestGuardian){
+					targetmovement = guardianWmovement;
+				}
+				//in the event that it's a player hit, we always keep calling the nearest one
+				//the bot/bot collisions can make other ones be near too, they don't follow the player
+				targetmovement.guardianCooldown += (col.relativeVelocity.magnitude / 60f);
+				//lerp value, slowly diminishes. Multiple kills can make a guardian super aggressive
+				targetmovement.locationTarget = transform.position;
+				//start off with the guardian going directly to the bot injured
+				//whether or not we killed the other bot, we are going to trigger the guardian
+
 				if (col.relativeVelocity.magnitude > 60f) {
+					guilt = 1f;
+					playermovement.probableGuilt = 1f;
+					//we know you killed one, therefore the guardians immediately become suspicious in case you bonk more
 					audioSource.clip = BotCrashTinkle;
+					audioSource.reverbZoneMix = 0f;
+					audioSource.priority = 10;
 					audioSource.pitch = 1.0f - ((col.relativeVelocity.magnitude) * 0.0005f);
 					if (audioSource.pitch < 0.2f) audioSource.pitch = 0.2f;
 					audioSource.volume = 1f;
@@ -83,9 +142,13 @@ public class BotMovement : MonoBehaviour
 						ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
 						ourhero.GetComponent<Rigidbody> ().freezeRotation = false;
 						setupbots.gameEnded = true;
+						setupbots.killed = true;
 						Destroy (playermovement);
+						logo.GetComponent<TextMesh>().text = "Game Over";
 						//you are REKKT too!
 						audioSource.clip = BotCrashTinkle;
+						audioSource.reverbZoneMix = 0f;
+						audioSource.priority = 10;
 						audioSource.pitch = 0.08f;
 						audioSource.volume = 1f;
 						//override with an epic fail crash
@@ -114,6 +177,7 @@ public class BotMovement : MonoBehaviour
 					audioSource.spatialBlend = 0f;
 					//switch this bot to normal stereo, music playback
 					audioSource.PlayOneShot (happyEnding, 1f);
+					logo.GetComponent<TextMesh>().text = "Success!";
 					notEnded = false;
 					//with that, we switch off the bot this is
 					setupbots.gameEnded = true;
@@ -136,6 +200,36 @@ public class BotMovement : MonoBehaviour
 			} //decide if it's a hit or a kiss
 			//with the player
 		} else {
+			guilt = 0f;
+			//bots hitting bots here
+			if (col.relativeVelocity.magnitude > (playermovement.timeBetweenGuardians * 1000f)) {
+				//amount of this gives us how active the guardians are
+				audioSource.clip = BotCrash;
+				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+				audioSource.volume = 0.3f + ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+				playermovement.timeBetweenGuardians = 1f;
+				//reset the guardian sensitivity
+				switch (playermovement.chooseGuardian){
+				case 0:
+					targetmovement = guardianNmovement;
+					break;
+				case 1:
+					targetmovement = guardianSmovement;
+					break;
+				case 2:
+					targetmovement = guardianEmovement;
+					break;
+				case 3:
+					targetmovement = guardianWmovement;
+					break;
+				} //we cycle through the guardians so they come from every direction, unpredictably
+				targetmovement.guardianCooldown += 1f;
+				//lerp value, slowly diminishes. Multiple kills can make a guardian super aggressive
+				targetmovement.locationTarget = transform.position;
+				//start off with the guardian going directly to the bot injured
+				//whether or not we killed the other bot, we are going to trigger the guardian
+			} //if the collision is hard, bots crash and the guardians go to see them
+
 			BotMovement botmovement = col.gameObject.GetComponent<BotMovement>();
 			if (botmovement != null) {
 				if (botmovement.yourMatch == yourMatch) {
@@ -171,6 +265,7 @@ public class BotMovement : MonoBehaviour
 		int center = Math.Abs (playermovement.yourBrain[voicePointer].b - botBrain [voicePointer].b);
 		if (notEnded && withinRange) {
 			if (audioSource.clip != BotBeep) audioSource.clip = BotBeep;
+			audioSource.priority = 100;
 			audioSource.volume = 1f;
 			float voicePitch = Mathf.Abs(2.9f - ((center + left + right) * 0.0045f));
 			//bounce the subsonic notes back up again
@@ -179,12 +274,6 @@ public class BotMovement : MonoBehaviour
 		}
 		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp(ourhero.GetComponent<Rigidbody>().velocity, Vector3.zero, 0.5f), (botBrain [voicePointer].g / 127f));
 		//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
-//		maincamera.transform.LookAt (Vector3.Lerp(playermovement.desiredAimOffsetPosition, myColor.bounds.center, 0.01f));
-//		Quaternion lookHack = maincamera.transform.rotation;
-		//lookHack.z = 1f;
-//		playermovement.initialTurn = lookHack.eulerAngles.x/2f;
-//		playermovement.initialUpDown = lookHack.eulerAngles.z/2f;
-//		Debug.Log (playermovement.initialTurn + " - " + playermovement.initialUpDown);
 	}
 	
 	void FixedUpdate ()
@@ -228,7 +317,7 @@ public class BotMovement : MonoBehaviour
 		rigidBody.AddForce (lerpedMove/adjacentSolid, ForceMode.Impulse);
 		//apply the attempted bot move as adjusted
 		if ((Mathf.Abs(rigidBody.velocity.magnitude) < 0.5f) && (Mathf.Abs(rigidBody.velocity.magnitude) > 0.01f))
-			playermovement.creepRotAngle += 0.0001f;
+			playermovement.creepRotAngle += 0.0002f;
 		if (playermovement.creepRotAngle > 360f)
 			playermovement.creepRotAngle -= 360f;
 		//this is an interesting one. The overall whirl of the bots depends on how many of them feel stuck.
@@ -247,7 +336,7 @@ public class BotMovement : MonoBehaviour
 		step += (botBrain [brainPointer].r / 85);
 		//red bots are more agitated, to a point.
 
-		if ((step > (350 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.volume = 0.0f;
+		if ((step > (400 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.volume = 0.0f;
 		//staccato: the bots can and do shorten their beeps. Green means perky short beeps, no green means longer
 
 		if (transform.position.x < 1f) {
@@ -263,7 +352,7 @@ public class BotMovement : MonoBehaviour
 			rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, Mathf.Abs (rigidBody.velocity.z));
 		}
 
-		if (setupbots.gameEnded) botTarget = ourhero.transform.position;
+		if (setupbots.gameEnded && (!setupbots.killed)) botTarget = ourhero.transform.position;
 		//if we won, hooray! Everybody pile on the lucky bot! :D
 
 		if (step >= botBrain [brainPointer].b) {
@@ -287,6 +376,7 @@ public class BotMovement : MonoBehaviour
 						audioSource.volume = 0.2f + ((botBrain [brainPointer].r + botBrain [brainPointer].g) / 2500f);
 						//yellowness is noisiness, they get loud when they're yellower. Also makes the hyper ones noisier.
 						//extreme loudness will make them blink!
+						audioSource.priority = 200;
 						float voicePitch = Mathf.Abs(2.8f - ((brainR + brainG + brainB) * 0.0042f));
 						//bounce the subsonic notes back up again
 						audioSource.pitch = voicePitch + 0.1f;
@@ -314,9 +404,15 @@ public class BotMovement : MonoBehaviour
 			transform.position = new Vector3 (3999f, transform.position.y, transform.position.z);
 			rigidBody.velocity = new Vector3 (-Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
 		}
-		if (audioSource.volume > 0.5 && audioSource.isPlaying && notEnded) myColor.material.color = new Color (1.1f, 1.1f, 1.1f);
+		if (audioSource.volume > 0.5 && audioSource.isPlaying && notEnded) myColor.material.color = new Color (1.07f, 1.07f, 1.07f);
 		else  myColor.material.color = new Color (0.72f, 0.72f, 0.72f);
 		//bots light up when they are talking to you or banging, but not to play the end music
+
+		if (targetmovement != null) {
+			targetmovement.locationTarget = Vector3.Lerp(transform.position, ourhero.transform.position, guilt);
+		}
+		//we activated one of the guardians, so we're updating it with our location. If multiple bots are updating the same guardian,
+		//it'll be confused but should still follow the last direction it's told.
 		yield return new WaitForSeconds (.01f);
 
 
