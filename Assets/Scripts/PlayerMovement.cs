@@ -64,16 +64,16 @@ public class PlayerMovement : MonoBehaviour
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private RaycastHit hit;
-	private float nearGround = 1f;
-	private float chaseTilt = 0f;
-	private float speedSmoothing = 0f;
+//	private float nearGround = 1f;
+//	private float chaseTilt = 0f;
+//	private float speedSmoothing = 0f;
 	private float cameraZoom = 0f;
 	public float timeBetweenGuardians = 1f;
 	public float probableGuilt = 0f;
-	public float creepToRange = 1800f;
+	public float creepToRange = 100f;
 	public float creepRotAngle = 1f;
-	private float blurFactor = 0.002f;
-	private float velCompensated;
+	private float blurFactor = 0.001f;
+	private float velCompensated = 0.00001f;
 
 
 	void Awake ()
@@ -85,6 +85,9 @@ public class PlayerMovement : MonoBehaviour
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		baseJump = 2.5f;
 		blurHack = 0;
+		creepToRange = UnityEngine.Random.Range (creepToRange/2f, creepToRange);
+		//somewhat randomized but still in the area of what's set
+		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 	}
 
 	void Update ()
@@ -111,7 +114,6 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-			velCompensated = blurFactor / (rigidBody.velocity.magnitude + 4f);
 				if (blurHack == 0) blurHackQuaternion.y = -velCompensated;
 			if (blurHack == 1) blurHackQuaternion.y = velCompensated;
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
@@ -214,10 +216,10 @@ public class PlayerMovement : MonoBehaviour
 					if (audiosource.clip != botBeep)
 						audiosource.clip = botBeep;
 					if (yourMatchOccluded) {
-						audiosource.volume = 0.2f;
-						audiosource.reverbZoneMix = 2f;
+						audiosource.volume = 0.1f;
+						audiosource.reverbZoneMix = 1.9f;
 					} else {
-						audiosource.volume = 0.2f;
+						audiosource.volume = 0.1f;
 						//we will keep it the same so it sounds the same: increasing volume
 						//caused it to sound different inc. in the reverb
 						float verbZone = 2f - (70f / yourMatchDistance);
@@ -300,8 +302,11 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
 		//alternately, we have high drag if we're near a surface and little in the air
 
-		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-		//apply the player move
+		if (desiredMove.magnitude < 3f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+		//apply the player move unless it's INSANE
+
+		velCompensated = blurFactor / (Mathf.Sqrt(rigidBody.velocity.magnitude) + 4f);
+
 
 //		speedSmoothing = 1f / (rigidBody.velocity.magnitude + 7f);
 		//this makes it settle down when moving real fast
@@ -407,8 +412,8 @@ public class PlayerMovement : MonoBehaviour
 		if (chooseGuardian > 3) chooseGuardian = 0;
 		//we'll just keep this spinning, it's as good as randomizing but much cheaper
 
-		creepToRange -= 0.01f;
-		if (creepToRange < 1f) creepToRange = 1800f;
+		creepToRange -= 0.015f;
+		if (creepToRange < 1f) creepToRange = 1500f;
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
 

@@ -15,6 +15,7 @@ TagManager:
   - GuardianW
   - Terrain
   - counterpartlogo
+  - overheadLight
   layers:
   - Default
   - TransparentFX

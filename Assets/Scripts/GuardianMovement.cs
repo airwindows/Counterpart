@@ -15,10 +15,12 @@ public class GuardianMovement : MonoBehaviour {
 	private float churnCoreVisuals = 1f;
 	private float churnMiddleVisuals = 1f;
 	private float churnSurfaceVisuals = 1f;
+	private GameObject earthquakeLight;
 	private GameObject ourhero;
 	public Vector3 locationTarget;
 	private Vector3 guardianMotion;
 	public float guardianCooldown = 0f;
+	private RaycastHit hit;
 	private PlayerMovement playermovement;
 	private SetUpBots setupbots;
 	private GameObject level;
@@ -31,9 +33,10 @@ public class GuardianMovement : MonoBehaviour {
 		guardianCore = transform.Find ("Core").GetComponent<Renderer> ().material;
 		guardianMiddle = transform.Find ("Middle Layer").GetComponent<Renderer> ().material;
 		guardianSurface = transform.Find ("Surface Sphere").GetComponent<Renderer> ().material;
-		ourhero = GameObject.FindGameObjectWithTag ("Player");
-		externalSource = ourhero.GetComponent<AudioSource> ();
+		earthquakeLight = GameObject.FindGameObjectWithTag ("overheadLight");
+		externalSource = earthquakeLight.GetComponent<AudioSource> ();
 		locationTarget = Vector3.zero;
+		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
 		level = GameObject.FindGameObjectWithTag ("Level");
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
@@ -42,23 +45,30 @@ public class GuardianMovement : MonoBehaviour {
 
 	void OnCollisionEnter(Collision col) {
 		float crashScale = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
-		if (!externalSource.isPlaying) {
-			externalSource.reverbZoneMix = crashScale * 0.0002f;
-			externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
-			externalSource.pitch = 0.35f - (crashScale * 0.0033f);
-			externalSource.volume = 10f / crashScale;
-			externalSource.Play ();
+		if (setupbots.gameEnded == true) {
+			//we aren't messing with it. Hopefully this can
+		} else {
+			if (!externalSource.isPlaying) {
+				externalSource.reverbZoneMix = crashScale * 0.00018f;
+				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
+				externalSource.pitch = 0.36f - (crashScale * 0.0032f);
+				externalSource.volume = 9f / crashScale;
+				externalSource.Play ();
+			}
+			if (col.gameObject.tag == "Player") {
+				ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
+				ourhero.GetComponent<Rigidbody> ().freezeRotation = false;
+				ourhero.GetComponent<Rigidbody> ().angularDrag = 0.6f;
+				setupbots.gameEnded = true;
+				setupbots.killed = true;
+				Destroy (playermovement);
+				logo.GetComponent<TextMesh>().text = "Game Over";
+				guardianCooldown = 0f;
+			}
+			//player is unkillable if they've already won
 		}
-		if (col.gameObject.tag == "Player") {
 
-			ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
-			ourhero.GetComponent<Rigidbody> ().freezeRotation = false;
-			setupbots.gameEnded = true;
-			setupbots.killed = true;
-			Destroy (playermovement);
-			logo.GetComponent<TextMesh>().text = "Game Over";
-			guardianCooldown = 0f;
-		}
+
 	} //entire collision
 	
 	void FixedUpdate () {
@@ -74,7 +84,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.07f + (guardianCooldown * guardianCooldown * 0.031f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.04f + (guardianCooldown * guardianCooldown * 0.031f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -99,9 +109,10 @@ public class GuardianMovement : MonoBehaviour {
 		}
 
 		Vector3 rawMove = locationTarget - transform.position;
-		rawMove = rawMove.normalized * 120f * guardianCooldown;
+		rawMove = rawMove.normalized * 180f * guardianCooldown;
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= 0.0005f;
+		guardianCooldown -= (0.001f / (myRigidbody.velocity.magnitude + .01f));
+		//rapidly cool off if it's holding position over a bot, not so much when chasing
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
 			if (this.tag == "GuardianN") locationTarget = new Vector3(3900f, 51f, 3900f);
@@ -109,14 +120,18 @@ public class GuardianMovement : MonoBehaviour {
 			if (this.tag == "GuardianE") locationTarget = new Vector3(3900f, 51f, 100f);
 			if (this.tag == "GuardianW") locationTarget = new Vector3(100f, 51f, 3900f);
 			rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 20f;
+			rawMove = rawMove.normalized * 80f;
 			myRigidbody.AddForce (rawMove);
 		}
 		yield return new WaitForSeconds (.01f);
 
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
-		audiosource.volume = 0.3f + (guardianCooldown * 0.2f);
+		audiosource.volume = 0.1f + (guardianCooldown * 0.5f);
+
+		if (Physics.Linecast (transform.position, ourhero.transform.position))
+				audiosource.volume = 0.05f + (guardianCooldown * 0.25f);
+
 		yield return new WaitForSeconds (.01f);
 
 	}

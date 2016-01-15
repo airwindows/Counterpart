@@ -4,7 +4,7 @@
 QualitySettings:
   m_ObjectHideFlags: 0
   serializedVersion: 5
-  m_CurrentQuality: 0
+  m_CurrentQuality: 2
   m_QualitySettings:
   - serializedVersion: 2
     name: VSync Mouse
@@ -18,8 +18,8 @@ QualitySettings:
     shadowCascade4Split: {x: .0666666701, y: .200000003, z: .466666669}
     blendWeights: 1
     textureQuality: 0
-    anisotropicTextures: 0
-    antiAliasing: 0
+    anisotropicTextures: 1
+    antiAliasing: 2
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -41,8 +41,8 @@ QualitySettings:
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
-    anisotropicTextures: 0
-    antiAliasing: 0
+    anisotropicTextures: 1
+    antiAliasing: 2
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -64,8 +64,8 @@ QualitySettings:
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
-    anisotropicTextures: 0
-    antiAliasing: 0
+    anisotropicTextures: 1
+    antiAliasing: 2
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0
@@ -87,8 +87,8 @@ QualitySettings:
     shadowCascade4Split: {x: .0666666701, y: .199999988, z: .466666639}
     blendWeights: 1
     textureQuality: 0
-    anisotropicTextures: 0
-    antiAliasing: 0
+    anisotropicTextures: 1
+    antiAliasing: 2
     softParticles: 0
     softVegetation: 1
     realtimeReflectionProbes: 0

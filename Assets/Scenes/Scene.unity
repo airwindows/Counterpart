@@ -17,7 +17,7 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: .0784313753, g: .0235294122, b: .196078435, a: 1}
   m_FogMode: 2
-  m_FogDensity: .000500000024
+  m_FogDensity: .000600000028
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: .63635385, g: .718301833, b: .786764741, a: 1}
@@ -390,7 +390,7 @@ Rigidbody:
   m_GameObject: {fileID: 175230440}
   serializedVersion: 2
   m_Mass: 2
-  m_Drag: .300000012
+  m_Drag: .25
   m_AngularDrag: 0
   m_UseGravity: 0
   m_IsKinematic: 0
@@ -559,7 +559,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -1129,7 +1129,7 @@ Rigidbody:
   m_GameObject: {fileID: 329898164}
   serializedVersion: 2
   m_Mass: 2
-  m_Drag: .300000012
+  m_Drag: .25
   m_AngularDrag: 0
   m_UseGravity: 0
   m_IsKinematic: 0
@@ -1400,7 +1400,7 @@ Rigidbody:
   m_GameObject: {fileID: 487292344}
   serializedVersion: 2
   m_Mass: 2
-  m_Drag: .300000012
+  m_Drag: .25
   m_AngularDrag: 0
   m_UseGravity: 0
   m_IsKinematic: 0
@@ -1712,9 +1712,10 @@ GameObject:
   m_Component:
   - 4: {fileID: 665808792}
   - 108: {fileID: 665808791}
+  - 82: {fileID: 665808793}
   m_Layer: 0
   m_Name: Terrain Overhead Light
-  m_TagString: Untagged
+  m_TagString: overheadLight
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 4294967295
@@ -1763,6 +1764,75 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
+--- !u!82 &665808793
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 665808790}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 8300000, guid: e9a7e356d1eea44fb8cd90fc93784c6d, type: 3}
+  m_PlayOnAwake: 0
+  m_Volume: .200000003
+  m_Pitch: 3
+  Loop: 0
+  Mute: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 1
+  BypassListenerEffects: 1
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+    - time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - time: 0
+      value: 1.10000002
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
 --- !u!1 &716947619
 GameObject:
   m_ObjectHideFlags: 0
@@ -1820,7 +1890,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_OcclusionCulling: 0
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -1988,7 +2058,7 @@ ParticleSystem:
         m_PostInfinity: 2
       minMaxState: 0
     startSpeed:
-      scalar: 60
+      scalar: 70
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -2115,7 +2185,7 @@ ParticleSystem:
         rgba: 4294967295
       minMaxState: 0
     startSize:
-      scalar: .400000006
+      scalar: .300000012
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -3213,9 +3283,9 @@ MonoBehaviour:
   botNumber: 500
   totalBotNumber: 500
   chooseGuardian: 0
-  timeBetweenGuardians: 1
+  timeBetweenGuardians: .5
   probableGuilt: 0
-  creepToRange: 500
+  creepToRange: 800
   creepRotAngle: 0
 --- !u!135 &1049631307
 SphereCollider:
@@ -3719,7 +3789,7 @@ Rigidbody:
   m_GameObject: {fileID: 1334917096}
   serializedVersion: 2
   m_Mass: 2
-  m_Drag: .300000012
+  m_Drag: .25
   m_AngularDrag: 0
   m_UseGravity: 0
   m_IsKinematic: 0
@@ -4113,7 +4183,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
