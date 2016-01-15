@@ -12,6 +12,8 @@ namespace UnityStandardAssets.ImageEffects
 		public float blurAmount = 0.2f;
 
 		private RenderTexture accumTexture;
+		private RenderTexture echoTexture;
+		private RenderTexture echoTwoTexture;
 
 		override protected void Start()
 		{
@@ -27,12 +29,13 @@ namespace UnityStandardAssets.ImageEffects
 		{
 			base.OnDisable();
 			DestroyImmediate(accumTexture);
+			DestroyImmediate(echoTexture);
+			DestroyImmediate(echoTwoTexture);
 		}
 		
 		// Called by camera to apply image effect
 		void OnRenderImage (RenderTexture source, RenderTexture destination)
 		{
-			// Create the accumulation texture
 			if (accumTexture == null)
 			{
 				DestroyImmediate(accumTexture);
@@ -40,31 +43,52 @@ namespace UnityStandardAssets.ImageEffects
 				accumTexture.filterMode = FilterMode.Point;
 				accumTexture.hideFlags = HideFlags.HideAndDontSave;
 				Graphics.Blit( source, accumTexture );
-				//immediately make a texture if we don't have one
 			}
 
+			if (echoTexture == null)
+			{
+				DestroyImmediate(echoTexture);
+				echoTexture = new RenderTexture(source.width, source.height, 0);
+				echoTexture.filterMode = FilterMode.Bilinear;
+				echoTexture.hideFlags = HideFlags.HideAndDontSave;
+				Graphics.Blit( source, echoTexture );
+				}
+			
+			if (echoTwoTexture == null)
+			{
+				DestroyImmediate(echoTwoTexture);
+				echoTwoTexture = new RenderTexture(source.width, source.height, 0);
+				echoTwoTexture.filterMode = FilterMode.Bilinear;
+				echoTwoTexture.hideFlags = HideFlags.HideAndDontSave;
+				Graphics.Blit( source, echoTwoTexture );
+				}
+
+
+
 			// Setup the texture and floating point values in the shader
-			material.SetTexture("_MainTex", accumTexture);
 			accumTexture.MarkRestoreExpected();
+			echoTexture.MarkRestoreExpected();
+			echoTwoTexture.MarkRestoreExpected();
+
+			Graphics.Blit (source, accumTexture);
+			//start fresh with the live image
+
+			material.SetTexture("_MainTex", accumTexture);
+			material.SetFloat("_AccumOrig", blurAmount);
+			Graphics.Blit (echoTwoTexture, accumTexture, material);
+			DestroyImmediate (echoTwoTexture);
+			material.SetTexture("_MainTex", accumTexture);
+			material.SetFloat("_AccumOrig", blurAmount);
+			Graphics.Blit (echoTexture, accumTexture, material);
+
+			Graphics.Blit(source, echoTwoTexture);
+			Graphics.Blit(accumTexture, echoTwoTexture, material);
+			Graphics.Blit(source, echoTexture);
+			//generating the reverb effect
 
 			Graphics.Blit (accumTexture, destination);
-			DestroyImmediate(accumTexture);
+			DestroyImmediate (accumTexture);
 			//output. Then we do the flare stuff in the accumtexture which is applied more subtly
-
-			RenderTexture blurbuffer = RenderTexture.GetTemporary(source.width/4, source.height/4, 0);
-			blurbuffer.filterMode = FilterMode.Bilinear;
-			Graphics.Blit(source, blurbuffer);
-			material.SetFloat("_AccumOrig", blurAmount * 0.5f);
-			Graphics.Blit (blurbuffer, accumTexture, material);
-			RenderTexture.ReleaseTemporary (blurbuffer);
-
-			blurbuffer = RenderTexture.GetTemporary(source.width, source.height, 0);
-			blurbuffer.filterMode = FilterMode.Point;
-			Graphics.Blit(source, blurbuffer);
-			material.SetFloat("_AccumOrig", blurAmount);
-			Graphics.Blit (blurbuffer, accumTexture, material);
-			RenderTexture.ReleaseTemporary (blurbuffer);
-			//layer the full res one
 		}
 	}
 }

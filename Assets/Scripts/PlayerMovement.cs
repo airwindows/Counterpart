@@ -72,6 +72,8 @@ public class PlayerMovement : MonoBehaviour
 	public float probableGuilt = 0f;
 	public float creepToRange = 1800f;
 	public float creepRotAngle = 1f;
+	private float blurFactor = 0.002f;
+	private float velCompensated;
 
 
 	void Awake ()
@@ -109,11 +111,9 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-			if (blurHack == 0) blurHackQuaternion.y += 0.0002f;
-			if (blurHack == 1) blurHackQuaternion.y -= 0.0002f;
-		//	if (blurHack == 2) blurHackQuaternion.x -= 0.00015f;
-		//	if (blurHack == 3) blurHackQuaternion.z -= 0.00015f;
-			//can be a four position jitter, but we have these big horizontal lines so we want only side-to-side jitter.
+			velCompensated = blurFactor / (rigidBody.velocity.magnitude + 4f);
+				if (blurHack == 0) blurHackQuaternion.y = -velCompensated;
+			if (blurHack == 1) blurHackQuaternion.y = velCompensated;
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
 		}
 
@@ -128,10 +128,10 @@ public class PlayerMovement : MonoBehaviour
 		mainCamera.transform.LookAt (desiredAimOffsetPosition);
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
-		if (QualitySettings.maximumLODLevel == 0)
-			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround));
-		else
-			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround));
+//		if (QualitySettings.maximumLODLevel == 0)
+//			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround / 2f));
+//		else
+//			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround / 2f));
 		//we apply tilt and camera shake: raw Mouse Y is decent camera shake and chaseTilt
 		//QualitySettings.maximumLODlevel is being used to pass controller choice as they can't both run at once
 		//I don't need Unity's LOD as mine is simpler and works without it and does lots more
@@ -303,20 +303,20 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 		//apply the player move
 
-		speedSmoothing = 1.5f / (rigidBody.velocity.magnitude + 4f);
+//		speedSmoothing = 1f / (rigidBody.velocity.magnitude + 7f);
 		//this makes it settle down when moving real fast
-		float tempSpeedRelatedBank = ((maximumBank/momentum)/Mathf.Sqrt(speedSmoothing)) / Mathf.Pow (altitude, 3f);
+//		float tempSpeedRelatedBank = ((maximumBank/momentum)/Mathf.Sqrt(speedSmoothing)) / Mathf.Pow (altitude, 3f);
 		//this complicated mess gives us bank angles that aren't directly related to how jittery things are
 		
-		if (nearGround > tempSpeedRelatedBank) nearGround = tempSpeedRelatedBank;
-		else nearGround = Mathf.Lerp(nearGround, tempSpeedRelatedBank, speedSmoothing);
+//		if (nearGround > tempSpeedRelatedBank) nearGround = tempSpeedRelatedBank;
+//		else nearGround = Mathf.Lerp(nearGround, tempSpeedRelatedBank, speedSmoothing);
 		//we lerp the nearGround parameter here, because it'll be more fluid if it's in FixedUpdate
 		//we're also forcing it to be small if it's becoming small: if it's large that's when it's crazytown
-		if (QualitySettings.maximumLODLevel == 0)
-			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("MouseX") / ((mouseSensitivity / fps) * 45f), speedSmoothing);
+//		if (QualitySettings.maximumLODLevel == 0)
+//			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("MouseX") / ((chaseTilt * chaseTilt)+(200f/Mathf.Sqrt(fps))), speedSmoothing);
 		//we are applying mouse input at full crank, so we have to compensate in order to get bank angles like we expect
-		else
-			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("JoystickLookLeftRight") / 4f, speedSmoothing);
+//		else
+//			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("JoystickLookLeftRight") / ((chaseTilt * chaseTilt)+(100f/Mathf.Sqrt(fps))), speedSmoothing);
 		//chaseTilt is de-jittering the bank effect. Depends what kind of control system
 		//we apply it in Update, though.
 

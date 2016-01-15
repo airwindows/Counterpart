@@ -404,8 +404,8 @@ public class BotMovement : MonoBehaviour
 			transform.position = new Vector3 (3999f, transform.position.y, transform.position.z);
 			rigidBody.velocity = new Vector3 (-Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
 		}
-		if (audioSource.volume > 0.5 && audioSource.isPlaying && notEnded) myColor.material.color = new Color (1.07f, 1.07f, 1.07f);
-		else  myColor.material.color = new Color (0.72f, 0.72f, 0.72f);
+		if (audioSource.volume > 0.5 && audioSource.isPlaying && notEnded) myColor.material.color = new Color (0.7f, 0.7f, 0.7f);
+		else  myColor.material.color = new Color (0.5f, 0.5f, 0.5f);
 		//bots light up when they are talking to you or banging, but not to play the end music
 
 		if (targetmovement != null) {

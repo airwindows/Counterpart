@@ -15,15 +15,15 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 6
   m_Fog: 1
-  m_FogColor: {r: .0705882385, g: .0235294141, b: .203921586, a: 1}
+  m_FogColor: {r: .0784313753, g: .0235294122, b: .196078435, a: 1}
   m_FogMode: 2
-  m_FogDensity: .000600000028
+  m_FogDensity: .000500000024
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: .63635385, g: .718301833, b: .786764741, a: 1}
   m_AmbientEquatorColor: {r: .838235259, g: .814771473, b: .764273345, a: 1}
   m_AmbientGroundColor: {r: 0, g: 0, b: 0, a: 1}
-  m_AmbientIntensity: .100000001
+  m_AmbientIntensity: .180000007
   m_AmbientMode: 1
   m_SkyboxMaterial: {fileID: 2100000, guid: 6a5306b267f234a1291ec1a399430aac, type: 2}
   m_HaloStrength: .5
@@ -529,7 +529,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: 3946536a542444dc88f2d7e5e640d5ad, type: 3}
-  blurAmount: .126000002
+  blurAmount: .550000012
 --- !u!20 &224352051
 Camera:
   m_ObjectHideFlags: 0
@@ -559,7 +559,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 0
+  m_HDR: 1
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -765,7 +765,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 259735667}
   m_LocalRotation: {x: 0, y: .0909802094, z: 0, w: .995852709}
-  m_LocalPosition: {x: 2048, y: -2000, z: 2048}
+  m_LocalPosition: {x: 2048, y: -3000, z: 2048}
   m_LocalScale: {x: 2500, y: 1, z: 2500}
   m_Children: []
   m_Father: {fileID: 631677884}
@@ -1729,7 +1729,7 @@ Light:
   serializedVersion: 6
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: .389999986
+  m_Intensity: .123999998
   m_Range: 20000
   m_SpotAngle: 30
   m_CookieSize: 10
@@ -1820,7 +1820,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 0
+  m_HDR: 1
   m_OcclusionCulling: 0
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -3206,7 +3206,7 @@ MonoBehaviour:
   baseJump: 2.4000001
   initialTurn: 240
   initialUpDown: 0
-  maximumBank: 30
+  maximumBank: 10
   clampRotateAngle: 6.28318548
   desiredAimOffsetPosition: {x: 0, y: 0, z: 0}
   fps: 60
@@ -3886,7 +3886,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1661163032}
   m_LocalRotation: {x: 0, y: .833885849, z: 0, w: .551936924}
-  m_LocalPosition: {x: 2048, y: -4000, z: 2048}
+  m_LocalPosition: {x: 2048, y: -5000, z: 2048}
   m_LocalScale: {x: 1500, y: 1, z: 1500}
   m_Children: []
   m_Father: {fileID: 631677884}
@@ -3946,7 +3946,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1691087267}
   m_LocalRotation: {x: 0, y: .965085149, z: 0, w: .261936367}
-  m_LocalPosition: {x: 2048, y: -5000, z: 2048}
+  m_LocalPosition: {x: 2048, y: -6000, z: 2048}
   m_LocalScale: {x: 1000.00006, y: 1, z: 1000}
   m_Children: []
   m_Father: {fileID: 631677884}
@@ -4020,8 +4020,8 @@ Light:
   serializedVersion: 6
   m_Type: 0
   m_Color: {r: 1, g: .984178483, b: .95588237, a: 1}
-  m_Intensity: .600000024
-  m_Range: 600
+  m_Intensity: .150000006
+  m_Range: 500
   m_SpotAngle: 80.5999985
   m_CookieSize: 10
   m_Shadows:
@@ -4113,7 +4113,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 0
+  m_HDR: 1
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -4142,7 +4142,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1966720973}
   m_LocalRotation: {x: 0, y: .512792289, z: 0, w: .8585127}
-  m_LocalPosition: {x: 2048, y: -3000, z: 2048}
+  m_LocalPosition: {x: 2048, y: -4000, z: 2048}
   m_LocalScale: {x: 2000, y: 1, z: 2000}
   m_Children: []
   m_Father: {fileID: 631677884}

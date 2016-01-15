@@ -74,7 +74,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.18f + (guardianCooldown * 0.46f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.07f + (guardianCooldown * guardianCooldown * 0.031f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -87,20 +87,21 @@ public class GuardianMovement : MonoBehaviour {
 	IEnumerator SlowUpdates () {
 
 
-		if (guardianCooldown > 1.0) {
-			if (guardianCooldown > 2.0) {
+		if (guardianCooldown > 2.0) {
+			if (guardianCooldown > 3.0) {
 				locationTarget = ourhero.transform.position;
-				//if you make them angry over 2, forget it, they're on you and only you
+				//if you make them angry over 3, forget it, they're on you and only you
+				//this is where they start to turn white with rage
 			} else {
-				locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, guardianCooldown-1f);
-				//if guardian anger is over 1, gradually target the player. It dissipates.
+				locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, guardianCooldown-2f);
+				//if guardian anger is over 2, gradually target the player. It dissipates.
 			}
 		}
 
 		Vector3 rawMove = locationTarget - transform.position;
-		rawMove = rawMove.normalized * 150f * guardianCooldown;
+		rawMove = rawMove.normalized * 120f * guardianCooldown;
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= 0.0004f;
+		guardianCooldown -= 0.0005f;
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
 			if (this.tag == "GuardianN") locationTarget = new Vector3(3900f, 51f, 3900f);
@@ -108,7 +109,7 @@ public class GuardianMovement : MonoBehaviour {
 			if (this.tag == "GuardianE") locationTarget = new Vector3(3900f, 51f, 100f);
 			if (this.tag == "GuardianW") locationTarget = new Vector3(100f, 51f, 3900f);
 			rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 50f;
+			rawMove = rawMove.normalized * 20f;
 			myRigidbody.AddForce (rawMove);
 		}
 		yield return new WaitForSeconds (.01f);

@@ -7,7 +7,7 @@ Properties {
     SubShader { 
 		ZTest Always Cull Off ZWrite Off
 		Pass {
-			Blend SrcAlpha One //SrcAlpha OneMinusSrcAlpha //is a smooth blend, One One is bloom city
+			Blend SrcAlpha One //SrcAlpha OneMinusSrcAlpha //is a smooth blend, One One is bloom city, SrcAlpha One is a hybrid
 			ColorMask RGB
 		    BindChannels { 
 				Bind "vertex", vertex 
@@ -99,7 +99,7 @@ Properties {
 SubShader {
 	ZTest Always Cull Off ZWrite Off
 	Pass {
-		Blend SrcAlpha OneMinusSrcAlpha
+		Blend One One //SrcAlpha OneMinusSrcAlpha //is a smooth blend, One One is bloom city, SrcAlpha One is a hybrid
 		ColorMask RGB
 		SetTexture [_MainTex] {
 			ConstantColor (0,0,0,[_AccumOrig])
