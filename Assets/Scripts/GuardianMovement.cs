@@ -111,7 +111,7 @@ public class GuardianMovement : MonoBehaviour {
 		Vector3 rawMove = locationTarget - transform.position;
 		rawMove = rawMove.normalized * 180f * guardianCooldown;
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= (0.001f / (myRigidbody.velocity.magnitude + .01f));
+		guardianCooldown -= (0.001f / (myRigidbody.velocity.magnitude * 0.25f));
 		//rapidly cool off if it's holding position over a bot, not so much when chasing
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
