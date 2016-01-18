@@ -330,9 +330,8 @@ public class PlayerMovement : MonoBehaviour
 
 
 	IEnumerator SlowUpdates () {
-		if (transform.position.x < 1) {
-			transform.position = new Vector3 (1, transform.position.y, transform.position.z);
-			rigidBody.velocity = new Vector3 (Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+		if (transform.position.x < 0f) {
+			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
 		}
 
 		if (Cursor.lockState != CursorLockMode.Locked) {
@@ -341,8 +340,7 @@ public class PlayerMovement : MonoBehaviour
 		}
 		//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-		timeBetweenGuardians *= 0.9997f;
-		probableGuilt *= 0.9997f;
+		timeBetweenGuardians *= 0.9995f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
 
 
@@ -358,17 +356,15 @@ public class PlayerMovement : MonoBehaviour
 		}
 		yield return new WaitForSeconds(.016f);
 
-		if (transform.position.z < 1) {
-			transform.position = new Vector3 (transform.position.x, transform.position.y, 1);
-			rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, Mathf.Abs (rigidBody.velocity.z));
+		if (transform.position.z < 0f) {
+			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 		yield return new WaitForSeconds(.016f);
 
-		if (transform.position.x > 3999) {
-			transform.position = new Vector3 (3999, transform.position.y, transform.position.z);
-			rigidBody.velocity = new Vector3 (-Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+		if (transform.position.x > 4000f) {
+			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 		}
 		wireframeCamera.fieldOfView = baseFOV - 0.5f + (cameraZoom*0.5f);
 		float recip = 1.0f / backgroundSound.gain;
@@ -376,9 +372,8 @@ public class PlayerMovement : MonoBehaviour
 		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
 		yield return new WaitForSeconds(.016f);
 
-		if (transform.position.z > 3999) {
-			transform.position = new Vector3 (transform.position.x, transform.position.y, 3999);
-			rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, -Mathf.Abs (rigidBody.velocity.z));
+		if (transform.position.z > 4000f) {
+			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
 		}
 		///walls! We bounce off the four walls of the world rather than falling out of it
 		skyboxCamera.fieldOfView = baseFOV - 1f + cameraZoom;
@@ -409,11 +404,12 @@ public class PlayerMovement : MonoBehaviour
 		//it's necessary
 
 		chooseGuardian += 1;
-		if (chooseGuardian > 3) chooseGuardian = 0;
+		if (chooseGuardian == 1) chooseGuardian = 0;
 		//we'll just keep this spinning, it's as good as randomizing but much cheaper
+		//we have a magic value where if it's ever higher than 1, we summon the guardian and be sure it's mad
 
 		creepToRange -= 0.015f;
-		if (creepToRange < 1f) creepToRange = 1500f;
+		if (creepToRange < 1f) creepToRange = 1900f;
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
 

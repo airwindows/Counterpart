@@ -44,14 +44,10 @@ public class BotMovement : MonoBehaviour
 	private PlayerMovement playermovement;
 	private GuardianMovement guardianNmovement;
 	private GuardianMovement guardianSmovement;
-	private GuardianMovement guardianEmovement;
-	private GuardianMovement guardianWmovement;
 	private GuardianMovement targetmovement;
 	private GameObject level;
 	private GameObject guardianN;
 	private GameObject guardianS;
-	private GameObject guardianE;
-	private GameObject guardianW;
 	private SetUpBots setupbots;
 	private GameObject logo;
 
@@ -68,12 +64,8 @@ public class BotMovement : MonoBehaviour
 		level = GameObject.FindGameObjectWithTag ("Level");
 		guardianN = GameObject.FindGameObjectWithTag ("GuardianN");
 		guardianS = GameObject.FindGameObjectWithTag ("GuardianS");
-		guardianE = GameObject.FindGameObjectWithTag ("GuardianE");
-		guardianW = GameObject.FindGameObjectWithTag ("GuardianW");
 		guardianNmovement = guardianN.GetComponent<GuardianMovement>();
 		guardianSmovement = guardianS.GetComponent<GuardianMovement>();
-		guardianEmovement = guardianE.GetComponent<GuardianMovement>();
-		guardianWmovement = guardianW.GetComponent<GuardianMovement>();
 		targetmovement = null;
 		//we assign this so that the bot can keep sending whatever location data to whichever AI
 		//we'll check for null to see if it's ever been directed to a target.
@@ -89,7 +81,7 @@ public class BotMovement : MonoBehaviour
 		if (col.gameObject.tag == "Player" && notEnded) {
 
 			if (col.relativeVelocity.magnitude > 25f) {
-				playermovement.probableGuilt = Mathf.Lerp(playermovement.probableGuilt, 1f, 0.5f);
+				playermovement.probableGuilt = Mathf.Lerp(playermovement.probableGuilt, 2f, 0.5f);
 				guilt = playermovement.probableGuilt;
 				//the more you actually bonk the bots, the closer the guardians will try to get to you, even if you don't kill them
 				playermovement.timeBetweenGuardians = 1f;
@@ -109,13 +101,6 @@ public class BotMovement : MonoBehaviour
 					nearestGuardian = Vector3.Distance(ourhero.transform.position, guardianS.transform.position);
 					targetmovement = guardianSmovement;
 				}
-				if (Vector3.Distance(ourhero.transform.position, guardianE.transform.position) < nearestGuardian){
-					nearestGuardian = Vector3.Distance(ourhero.transform.position, guardianE.transform.position);
-					targetmovement = guardianEmovement;
-				}
-				if (Vector3.Distance(ourhero.transform.position, guardianW.transform.position) < nearestGuardian){
-					targetmovement = guardianWmovement;
-				}
 				//in the event that it's a player hit, we always keep calling the nearest one
 				//the bot/bot collisions can make other ones be near too, they don't follow the player
 				targetmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 60f) * (ourhero.GetComponent<Rigidbody>().velocity.magnitude * 0.025f));
@@ -128,6 +113,7 @@ public class BotMovement : MonoBehaviour
 					//if you've won the game you can't kill bots, it would lack class
 					guilt = 1f;
 					playermovement.probableGuilt = 1f;
+					playermovement.chooseGuardian = 2;
 					//we know you killed one, therefore the guardians immediately become suspicious in case you bonk more
 					audioSource.clip = BotCrashTinkle;
 					audioSource.reverbZoneMix = 0f;
@@ -225,13 +211,16 @@ public class BotMovement : MonoBehaviour
 					targetmovement = guardianSmovement;
 					break;
 				case 2:
-					targetmovement = guardianEmovement;
-					break;
-				case 3:
-					targetmovement = guardianWmovement;
+					targetmovement = guardianNmovement;
+					targetmovement.guardianCooldown += 3f;
+					targetmovement = guardianSmovement;
+					targetmovement.guardianCooldown += 3f;
+					//in the event chooseGuardian is over 1, be sure and trigger both: any bot can do this
+					playermovement.chooseGuardian = 0;
+					//then return to normal behavior
 					break;
 				} //we cycle through the guardians so they come from every direction, unpredictably
-				targetmovement.guardianCooldown = 1f;
+				targetmovement.guardianCooldown += 1f;
 				//lerp value, slowly diminishes. Inter-bot hits can't make the guardian target you
 				targetmovement.locationTarget = transform.position;
 				//start off with the guardian going directly to the bot injured
@@ -349,17 +338,15 @@ public class BotMovement : MonoBehaviour
 		if ((step > (400 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.volume = 0.0f;
 		//staccato: the bots can and do shorten their beeps. Green means perky short beeps, no green means longer
 
-		if (transform.position.x < 1f) {
-			transform.position = new Vector3 (1f, transform.position.y, transform.position.z);
-			rigidBody.velocity = new Vector3 (Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+		if (transform.position.x < 0f) {
+			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
 		}
 		yield return new WaitForSeconds (.01f);
 		//walls! We bounce off the four walls of the world rather than falling out of it
 
 		
-		if (transform.position.z < 1f) {
-			transform.position = new Vector3 (transform.position.x, transform.position.y, 1f);
-			rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, Mathf.Abs (rigidBody.velocity.z));
+		if (transform.position.z < 0f) {
+			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
 		}
 
 		if (setupbots.gameEnded && (!setupbots.killed)) botTarget = ourhero.transform.position;
@@ -423,9 +410,8 @@ public class BotMovement : MonoBehaviour
 		}
 		yield return new WaitForSeconds (.01f);
 
-		if (transform.position.x > 3999f) {
-			transform.position = new Vector3 (3999f, transform.position.y, transform.position.z);
-			rigidBody.velocity = new Vector3 (-Mathf.Abs (rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+		if (transform.position.x > 4000f) {
+			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 		}
 		if (audioSource.volume > 0.5 && audioSource.isPlaying && notEnded) myColor.material.color = new Color (0.7f, 0.7f, 0.7f);
 		else  myColor.material.color = new Color (0.5f, 0.5f, 0.5f);
@@ -443,9 +429,8 @@ public class BotMovement : MonoBehaviour
 
 
 
-		if (transform.position.z > 3999f) {
-			transform.position = new Vector3 (transform.position.x, transform.position.y, 3999f);
-			rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, -Mathf.Abs (rigidBody.velocity.z));
+		if (transform.position.z > 4000f) {
+			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
 		}
 		float distance = Vector3.Distance (transform.position, ourhero.transform.position);
 

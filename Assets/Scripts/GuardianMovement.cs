@@ -20,6 +20,7 @@ public class GuardianMovement : MonoBehaviour {
 	public Vector3 locationTarget;
 	private Vector3 guardianMotion;
 	public float guardianCooldown = 0f;
+	private float guilt = 0f;
 	private RaycastHit hit;
 	private PlayerMovement playermovement;
 	private SetUpBots setupbots;
@@ -96,9 +97,10 @@ public class GuardianMovement : MonoBehaviour {
 
 	IEnumerator SlowUpdates () {
 
+		guilt = playermovement.probableGuilt;
 
-		if (guardianCooldown > 2.0) {
-			if (guardianCooldown > 3.0) {
+		if (guardianCooldown * guilt > 2.0) {
+			if (guardianCooldown * guilt > 3.0) {
 				locationTarget = ourhero.transform.position;
 				//if you make them angry over 3, forget it, they're on you and only you
 				//this is where they start to turn white with rage
@@ -111,14 +113,12 @@ public class GuardianMovement : MonoBehaviour {
 		Vector3 rawMove = locationTarget - transform.position;
 		rawMove = rawMove.normalized * 180f * guardianCooldown;
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= (0.001f / (myRigidbody.velocity.magnitude * 0.25f));
+		guardianCooldown -= (0.0005f / myRigidbody.velocity.magnitude);
 		//rapidly cool off if it's holding position over a bot, not so much when chasing
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
-			if (this.tag == "GuardianN") locationTarget = new Vector3(3900f, 51f, 3900f);
-			if (this.tag == "GuardianS") locationTarget = new Vector3(100f, 51f, 100f);
-			if (this.tag == "GuardianE") locationTarget = new Vector3(3900f, 51f, 100f);
-			if (this.tag == "GuardianW") locationTarget = new Vector3(100f, 51f, 3900f);
+			if (this.tag == "GuardianN") locationTarget = new Vector3(1870f, 314f, 1760f);
+			if (this.tag == "GuardianS") locationTarget = new Vector3(2007f, 292f, 1978f);
 			rawMove = locationTarget - transform.position;
 			rawMove = rawMove.normalized * 80f;
 			myRigidbody.AddForce (rawMove);
@@ -127,10 +127,10 @@ public class GuardianMovement : MonoBehaviour {
 
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
-		audiosource.volume = 0.1f + (guardianCooldown * 0.5f);
+		audiosource.volume = 0.2f + guardianCooldown;
 
 		if (Physics.Linecast (transform.position, ourhero.transform.position))
-				audiosource.volume = 0.05f + (guardianCooldown * 0.25f);
+				audiosource.volume = 0.1f + (guardianCooldown * 0.5f);
 
 		yield return new WaitForSeconds (.01f);
 
