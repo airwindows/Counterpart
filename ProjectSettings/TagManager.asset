@@ -16,6 +16,7 @@ TagManager:
   - Terrain
   - counterpartlogo
   - overheadLight
+  - Line
   layers:
   - Default
   - TransparentFX

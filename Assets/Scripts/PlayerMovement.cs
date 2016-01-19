@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// This handles movement input- the directional keys, jumping,
@@ -17,15 +18,13 @@ public class PlayerMovement : MonoBehaviour
 	public Camera wireframeCamera;
 	public Camera skyboxCamera;
 	public Light headlight;
-	public TextMesh fpsMesh;
-	public TextMesh botsMesh;
-	public Renderer sightA;
-	public Renderer sightB;
+	public GameObject fpsText;
+	public GameObject botsText;
 	public ParticleSystem particlesystem;
 	public AnimationCurve slopeCurveModifier = new AnimationCurve (new Keyframe (-90.0f, 1.0f), new Keyframe (0.0f, 1.0f), new Keyframe (90.0f, 0.0f));
 	public int yourMatch;
 	public Color32[] yourBrain;
-	public float activityRange = 10f;
+	public float activityRange = 30f;
 	private int brainPointer;
 	private float altitude = 1f;
 	private Rigidbody rigidBody;
@@ -233,7 +232,6 @@ public class PlayerMovement : MonoBehaviour
 			//this is our geiger counter for our bot
 		}
 
-
 		StartCoroutine ("SlowUpdates");
 
 		if (Physics.Raycast (transform.position, Vector3.down, out hit)) {
@@ -361,6 +359,10 @@ public class PlayerMovement : MonoBehaviour
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
+
+		if (fps < 30) System.GC.Collect();
+		//in the event of the game hammering on something, kick in some manual garbage collections in the coroutine
+		//if we're running super well we need never see this
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.x > 4000f) {
@@ -393,11 +395,11 @@ public class PlayerMovement : MonoBehaviour
 
 
 		if (fps != prevFps) {
-			fpsMesh.text = string.Format ("fps:{0:0.}", fps);
+			fpsText.GetComponent<Text>().text = string.Format ("fps:{0:0.}", fps);
 			prevFps = fps;
 		}
 		if (botNumber != prevBotNumber) {
-			botsMesh.text = string.Format("bots:{0:0.}", botNumber);
+			botsText.GetComponent<Text>().text = string.Format("bots:{0:0.}", botNumber);
 			prevBotNumber = botNumber;
 		}
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
@@ -413,11 +415,8 @@ public class PlayerMovement : MonoBehaviour
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
 
-		activityRange = fps * 8f;
-		if (activityRange > 480f) activityRange = 480f;
-		//we are dynamically ramping the zone where we automatically park bots.
-
 		yield return new WaitForSeconds(.016f);
+
 	}
 }
 

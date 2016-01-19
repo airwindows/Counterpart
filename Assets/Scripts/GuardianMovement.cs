@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -63,7 +64,7 @@ public class GuardianMovement : MonoBehaviour {
 				setupbots.gameEnded = true;
 				setupbots.killed = true;
 				Destroy (playermovement);
-				logo.GetComponent<TextMesh>().text = "Game Over";
+				logo.GetComponent<Text>().text = "Game Over";
 				guardianCooldown = 0f;
 			}
 			//player is unkillable if they've already won
@@ -105,7 +106,7 @@ public class GuardianMovement : MonoBehaviour {
 				//if you make them angry over 3, forget it, they're on you and only you
 				//this is where they start to turn white with rage
 			} else {
-				locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, guardianCooldown-2f);
+				locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, (guardianCooldown-1f)/2f);
 				//if guardian anger is over 2, gradually target the player. It dissipates.
 			}
 		}
@@ -127,10 +128,10 @@ public class GuardianMovement : MonoBehaviour {
 
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
-		audiosource.volume = 0.2f + guardianCooldown;
+		audiosource.volume = 0.3f + guardianCooldown;
 
 		if (Physics.Linecast (transform.position, ourhero.transform.position))
-				audiosource.volume = 0.1f + (guardianCooldown * 0.5f);
+				audiosource.volume = 0.2f + (guardianCooldown);
 
 		yield return new WaitForSeconds (.01f);
 

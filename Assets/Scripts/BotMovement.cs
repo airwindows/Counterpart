@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System;
 using System.Collections;
 
@@ -16,7 +17,6 @@ public class BotMovement : MonoBehaviour
 	public bool withinRange;
 	private Vector3 rawMove;
 	private Vector3 desiredMove;
-	private Vector3 storedVelocity = Vector3.zero;
 	private Vector3 lerpedMove = Vector3.zero;
 	private Vector3 groundContactNormal;
 	public AudioClip BotCrash;
@@ -50,6 +50,8 @@ public class BotMovement : MonoBehaviour
 	private GameObject guardianS;
 	private SetUpBots setupbots;
 	private GameObject logo;
+	private GameObject botZaps;
+	private int lineCounter = 0;
 
 	void Awake ()
 	{
@@ -74,6 +76,7 @@ public class BotMovement : MonoBehaviour
 		//without it having to go through all the bots when it needs to react to a specific bot.
 		setupbots = level.GetComponent<SetUpBots>();
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		notEnded = true;
 	}
 
@@ -132,7 +135,7 @@ public class BotMovement : MonoBehaviour
 						setupbots.gameEnded = true;
 						setupbots.killed = true;
 						Destroy (playermovement);
-						logo.GetComponent<TextMesh>().text = "Game Over";
+						logo.GetComponent<Text>().text = "Game Over";
 						//you are REKKT too!
 						audioSource.clip = BotCrashTinkle;
 						audioSource.reverbZoneMix = 0f;
@@ -170,7 +173,7 @@ public class BotMovement : MonoBehaviour
 					//switch the earthquake FX to normal stereo, music playback
 					//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
 					externalSource.PlayOneShot (happyEnding, 1f);
-					logo.GetComponent<TextMesh>().text = "Success!";
+					logo.GetComponent<Text>().text = "Success!";
 					notEnded = false;
 					//with that, we switch off the bot this is
 					setupbots.gameEnded = true;
@@ -279,7 +282,7 @@ public class BotMovement : MonoBehaviour
 	{
 		//FixedUpdate is run as many times as needed, before an Update step: or, it's skipped if framerate is super high.		
 		 adjacentSolid = 99999;
-		
+
 		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, sphereCollider.radius)) groundContactNormal = hit.normal;
 		else groundContactNormal = Vector3.up;
 		rawMove = botTarget - transform.position;
@@ -335,7 +338,7 @@ public class BotMovement : MonoBehaviour
 		step += (botBrain [brainPointer].r / 85);
 		//red bots are more agitated, to a point.
 
-		if ((step > (400 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.volume = 0.0f;
+		if ((step > (400 - botBrain [brainPointer].g)) && (!setupbots.gameEnded)) audioSource.Stop ();
 		//staccato: the bots can and do shorten their beeps. Green means perky short beeps, no green means longer
 
 		if (transform.position.x < 0f) {
@@ -378,6 +381,10 @@ public class BotMovement : MonoBehaviour
 					audioSource.pitch = voicePitch + 0.1f;
 					if (!audioSource.isPlaying) audioSource.Play ();
 					//bot makes a remark
+					botZaps.transform.position = transform.position;
+					botZaps.transform.LookAt (ourhero.transform.position);
+					botZaps.GetComponent<ParticleSystem> ().Emit(1);
+					//and fires a particle if the player is not occluded
 				} else audioSource.Stop();
 			} else {
 				//we have occluded bots. Verb them!
@@ -407,6 +414,13 @@ public class BotMovement : MonoBehaviour
 				botTarget = hit.point + Vector3.up;
 			else
 				botTarget = spawnLocation;
+			if (!(Physics.Linecast (transform.position, botTarget))) {
+				botZaps.transform.position = transform.position;
+				botZaps.transform.LookAt (botTarget);
+				botZaps.GetComponent<ParticleSystem> ().Emit(1);
+				//and fires a particle if the goal is not occluded
+			}
+
 		}
 		yield return new WaitForSeconds (.01f);
 
@@ -419,15 +433,12 @@ public class BotMovement : MonoBehaviour
 
 		if (targetmovement != null) {
 			targetmovement.locationTarget = Vector3.Lerp(transform.position, ourhero.transform.position, guilt);
-			if (targetmovement.guardianCooldown < 0.2) targetmovement = null;
+			//if (targetmovement.guardianCooldown < 0.2) targetmovement = null;
 			//attempt to shut off the chase if the guardian cools off
 		}
 		//we activated one of the guardians, so we're updating it with our location. If multiple bots are updating the same guardian,
 		//it'll be confused but should still follow the last direction it's told.
 		yield return new WaitForSeconds (.01f);
-
-
-
 
 		if (transform.position.z > 4000f) {
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
@@ -457,40 +468,24 @@ public class BotMovement : MonoBehaviour
 			playermovement.yourMatchDistance = Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position))*8f;
 			playermovement.yourMatchOccluded = false;
 			//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
+
 			if (Physics.Linecast (transform.position, ourhero.transform.position))
 					playermovement.yourMatchOccluded = true;
 			//by doing this, we can see whether there's anything in the way of the ray between match and player
 			//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.
 		} else {
 			if (distance < playermovement.activityRange) {
-				rigidBody.isKinematic = false;
-				withinRange = true;
-			} else {
-				bool allowMovement = rigidBody.isKinematic;
-				if (allowMovement) {
-					rigidBody.isKinematic = false;
-					rigidBody.velocity = storedVelocity;
-				} else {
-					storedVelocity = rigidBody.velocity;
-					rigidBody.isKinematic = true;
-				}
-				//what we're doing is simply toggling it. This will slow them down but let them still move and get out of jammed situations
-				withinRange = false;
 				audioSource.Stop();
-				//thus if we have bots far out of range they'll totally avoid making useless engine functions happen
-				if (distance > (playermovement.fps * 100)) {
-					Destroy(this.transform.gameObject);
-					//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
-					//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 1000 away,
-					//at full 60fps vSync you have to be 6000 away to be culled. And of course unsynced rapidly makes them uncullable.
-
-				}
+			}
+			if (distance > (playermovement.fps * 100)) {
+				Destroy(this.transform.gameObject);
+				//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
+				//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 1000 away,
+				//at full 60fps vSync you have to be 6000 away to be culled. And of course unsynced rapidly makes them uncullable.
 			}
 		}
-
 		yield return new WaitForSeconds (.01f);
 		//this is also where we'll do dumb AI things that might be time consuming. We'll always return to this point but it takes a while
 		//to iterate through it all
 	}
-	
 }
