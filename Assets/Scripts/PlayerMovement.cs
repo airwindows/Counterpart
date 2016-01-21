@@ -63,14 +63,14 @@ public class PlayerMovement : MonoBehaviour
 	public int botNumber = 500;
 	private int prevBotNumber = 500;
 	public int totalBotNumber = 500;
-	public int chooseGuardian = 0;
 	private int blurHack;
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
+	private GameObject guardian;
+	private GuardianMovement guardianmovement;
 	private RaycastHit hit;
 	private float cameraZoom = 0f;
 	public float timeBetweenGuardians = 1f;
-	public float probableGuilt = 0f;
 	public float creepToRange = 100f;
 	public float creepRotAngle = 1f;
 	private float blurFactor = 0.001f;
@@ -84,6 +84,8 @@ public class PlayerMovement : MonoBehaviour
 		sphereCollider = GetComponent<SphereCollider> ();
 		audiosource = GetComponent<AudioSource> ();
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
+		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
+		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		startPosition = transform.position;
 		endPosition = transform.position;
 		stepsBetween = 0f;
@@ -92,6 +94,9 @@ public class PlayerMovement : MonoBehaviour
 		creepToRange = UnityEngine.Random.Range (creepToRange/2f, creepToRange);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
+		guardian.transform.position = guardianmovement.locationTarget;
+		//set up the scary monster to be faaaar away to start. It will circle.
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 	}
 
@@ -319,8 +324,13 @@ public class PlayerMovement : MonoBehaviour
 
 	IEnumerator SlowUpdates () {
 		if (transform.position.x < 0f) {
+			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
+				guardian.transform.position = new Vector3 (guardian.transform.position.x + 4000f, guardian.transform.position.y, guardian.transform.position.z);
+				guardianmovement.locationTarget.x += 4000f;
+			}
 			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
 		}
+
 
 		if (Cursor.lockState != CursorLockMode.Locked) {
 			Cursor.lockState = CursorLockMode.Locked;
@@ -345,6 +355,10 @@ public class PlayerMovement : MonoBehaviour
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.z < 0f) {
+			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
+				guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z + 4000f);
+				guardianmovement.locationTarget.z += 4000f;
+			}
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
@@ -356,6 +370,10 @@ public class PlayerMovement : MonoBehaviour
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.x > 4000f) {
+			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
+				guardian.transform.position = new Vector3 (guardian.transform.position.x - 4000f, guardian.transform.position.y, guardian.transform.position.z);
+				guardianmovement.locationTarget.x -= 4000f;
+			}
 			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 		}
 		wireframeCamera.fieldOfView = baseFOV - 0.5f + (cameraZoom*0.5f);
@@ -365,6 +383,10 @@ public class PlayerMovement : MonoBehaviour
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.z > 4000f) {
+			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
+				guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z - 4000f);
+				guardianmovement.locationTarget.z -= 4000f;
+			}
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
 		}
 		///walls! We bounce off the four walls of the world rather than falling out of it
@@ -372,7 +394,7 @@ public class PlayerMovement : MonoBehaviour
 		backgroundSound.gain = 1.0f / recip;
 
 		deltaTime += (Time.deltaTime - deltaTime) * 0.1f;
-		fps = Mathf.Lerp (fps, 1.0f / deltaTime, 1.0f/fps);
+		fps = Mathf.Lerp (fps, 1.0f / deltaTime, 8.0f/fps);
 		botNumber = allbots.transform.childCount;
 		if (botNumber > totalBotNumber) botNumber = totalBotNumber;
 		//it insists on finding gameObjects when we've killed bots, so we force it to be what we want

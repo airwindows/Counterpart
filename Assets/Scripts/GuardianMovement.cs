@@ -21,7 +21,6 @@ public class GuardianMovement : MonoBehaviour {
 	public Vector3 locationTarget;
 	private Vector3 guardianMotion;
 	public float guardianCooldown = 0f;
-	private float guilt = 0f;
 	private RaycastHit hit;
 	private PlayerMovement playermovement;
 	private SetUpBots setupbots;
@@ -49,12 +48,6 @@ public class GuardianMovement : MonoBehaviour {
 		float crashScale = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 		if (setupbots.gameEnded == true) {
 			guardianCooldown = 0f;
-			guilt = 0f;
-			if (this.tag == "GuardianN") locationTarget = new Vector3(1870f, 314f, 1760f);
-			if (this.tag == "GuardianS") locationTarget = new Vector3(2007f, 292f, 1978f);
-			Vector3 rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized;
-			myRigidbody.AddForce (rawMove);
 			//we aren't messing with it. Hopefully this can give a unbreaking end music play
 		} else {
 			if (!externalSource.isPlaying) {
@@ -93,7 +86,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.04f + (guardianCooldown * guardianCooldown * 0.031f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.05f + (guardianCooldown * guardianCooldown * 0.03f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -105,41 +98,36 @@ public class GuardianMovement : MonoBehaviour {
 
 	IEnumerator SlowUpdates () {
 
-		guilt = playermovement.probableGuilt;
-
-		if (guardianCooldown * guilt > 2.0) {
-			if (guardianCooldown * guilt > 3.0) {
-				locationTarget = ourhero.transform.position;
-				//if you make them angry over 3, forget it, they're on you and only you
-				//this is where they start to turn white with rage
-			} else {
-				locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, (guardianCooldown-1f)/2f);
-				//if guardian anger is over 2, gradually target the player. It dissipates.
-			}
-		}
+		float maxAnger = Mathf.Sqrt (501 - playermovement.totalBotNumber);
+		if (guardianCooldown > maxAnger) guardianCooldown = maxAnger;
+		//clamp it so it only starts targeting you when you're bad
+		if (playermovement.totalBotNumber < 500) locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, maxAnger/playermovement.totalBotNumber);
+		//this ought to make it go for the player pretty hard if they kill bots.
+		//otherwise, it just goes to the source of the altercation which might include you.
+		yield return new WaitForSeconds (0.01f);
 
 		Vector3 rawMove = locationTarget - transform.position;
-		rawMove = rawMove.normalized * 180f * guardianCooldown;
+		rawMove = rawMove.normalized * 180f * ((guardianCooldown > 1) ? 1f: guardianCooldown);
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= (0.0005f / myRigidbody.velocity.magnitude);
+		guardianCooldown -= (0.001f / myRigidbody.velocity.magnitude);
 		//rapidly cool off if it's holding position over a bot, not so much when chasing
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
-			if (this.tag == "GuardianN") locationTarget = new Vector3(1870f, 314f, 1760f);
-			if (this.tag == "GuardianS") locationTarget = new Vector3(2007f, 292f, 1978f);
+			locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
 			rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 80f;
+			rawMove = rawMove.normalized * 40f;
 			myRigidbody.AddForce (rawMove);
 		}
-		yield return new WaitForSeconds (.01f);
+		yield return new WaitForSeconds (0.01f);
 
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
-		audiosource.volume = 0.3f + guardianCooldown;
+		audiosource.volume = Mathf.Lerp(audiosource.volume, 0.3f + guardianCooldown, 0.001f + (guardianCooldown * 0.1f));
+		//ramp up fast but switch off more slowly.
 		if (Physics.Linecast (transform.position, ourhero.transform.position)) audiosource.volume = 0.2f + (guardianCooldown);
 		if (setupbots.gameEnded == true) audiosource.volume = 0f;
 
-		yield return new WaitForSeconds (.01f);
+		yield return new WaitForSeconds (0.01f);
 
 	}
 }
