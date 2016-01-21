@@ -20,6 +20,7 @@ public class PlayerMovement : MonoBehaviour
 	public Light headlight;
 	public GameObject fpsText;
 	public GameObject botsText;
+	public GameObject cameraDolly;
 	public ParticleSystem particlesystem;
 	public AnimationCurve slopeCurveModifier = new AnimationCurve (new Keyframe (-90.0f, 1.0f), new Keyframe (0.0f, 1.0f), new Keyframe (90.0f, 0.0f));
 	public int yourMatch;
@@ -28,6 +29,10 @@ public class PlayerMovement : MonoBehaviour
 	private int brainPointer;
 	private float altitude = 1f;
 	private Rigidbody rigidBody;
+	private Vector3 startPosition;
+	private Vector3 endPosition;
+	private float stepsBetween;
+	private LayerMask onlyTerrains;
 	private SphereCollider sphereCollider;
 	private AudioSource audiosource;
 	public float yourMatchDistance = 9999;
@@ -63,9 +68,6 @@ public class PlayerMovement : MonoBehaviour
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private RaycastHit hit;
-//	private float nearGround = 1f;
-//	private float chaseTilt = 0f;
-//	private float speedSmoothing = 0f;
 	private float cameraZoom = 0f;
 	public float timeBetweenGuardians = 1f;
 	public float probableGuilt = 0f;
@@ -82,16 +84,22 @@ public class PlayerMovement : MonoBehaviour
 		sphereCollider = GetComponent<SphereCollider> ();
 		audiosource = GetComponent<AudioSource> ();
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
+		startPosition = transform.position;
+		endPosition = transform.position;
+		stepsBetween = 0f;
 		baseJump = 2.5f;
 		blurHack = 0;
 		creepToRange = UnityEngine.Random.Range (creepToRange/2f, creepToRange);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 	}
 
 	void Update ()
 	{
 		//Each frame we run Update, regardless of what game control/physics is doing. This is the fundamental 'tick' of the game but it's wildly time-variant: it goes as fast as possible.
+		cameraDolly.transform.localPosition = Vector3.Lerp(startPosition, endPosition, stepsBetween);
+		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
 
 		if (QualitySettings.maximumLODLevel == 0) {
 			float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
@@ -113,7 +121,7 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-				if (blurHack == 0) blurHackQuaternion.y = -velCompensated;
+			if (blurHack == 0) blurHackQuaternion.y = -velCompensated;
 			if (blurHack == 1) blurHackQuaternion.y = velCompensated;
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
 		}
@@ -129,16 +137,12 @@ public class PlayerMovement : MonoBehaviour
 		mainCamera.transform.LookAt (desiredAimOffsetPosition);
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
-//		if (QualitySettings.maximumLODLevel == 0)
-//			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround / 2f));
-//		else
-//			mainCamera.transform.rotation = mainCamera.transform.rotation * Quaternion.Euler (0, 0, chaseTilt*(nearGround / 2f));
-		//we apply tilt and camera shake: raw Mouse Y is decent camera shake and chaseTilt
+
 		//QualitySettings.maximumLODlevel is being used to pass controller choice as they can't both run at once
 		//I don't need Unity's LOD as mine is simpler and works without it and does lots more
 
 		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
-			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
+			if (Physics.Raycast (transform.position, Vector3.down, out hit, 99999f, onlyTerrains)){
 					rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
 				releaseJump = false;
 				//if you jump you can climb steeper walls, but not vertical ones
@@ -189,14 +193,14 @@ public class PlayerMovement : MonoBehaviour
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 
-		particlesystem.transform.localPosition = Vector3.forward * 0.5f;
+		particlesystem.transform.localPosition = Vector3.forward * 0.6f;
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
 			if (!particlesystem.isPlaying) particlesystem.Play ();
-			particlesystem.emissionRate = 30.0f;
+			particlesystem.emissionRate = 20.0f;
 		} else particlesystem.emissionRate = 0.0f;
 		//this too can be fired by either system with no problem
 
-		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit)) {
+		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			groundContactNormal = hit.normal;
 		} else {
 			groundContactNormal = Vector3.up;
@@ -234,7 +238,7 @@ public class PlayerMovement : MonoBehaviour
 
 		StartCoroutine ("SlowUpdates");
 
-		if (Physics.Raycast (transform.position, Vector3.down, out hit)) {
+		if (Physics.Raycast (transform.position, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			altitude = hit.distance;
 			if (adjacentSolid > altitude)
 				adjacentSolid = altitude;
@@ -242,27 +246,26 @@ public class PlayerMovement : MonoBehaviour
 				downSolid = altitude;
 			//down's special, use it to test for climbing walls with jumps
 		} else {
-			if (Physics.Raycast (transform.position, Vector3.up, out hit)) {
-				//we are doing a ricochet as best we can
+			if (Physics.Raycast (transform.position + (Vector3.up * 9999f), Vector3.down, out hit, 99999f, onlyTerrains)) {
 				transform.position = hit.point + Vector3.up;
-				rigidBody.velocity = Vector3.Reflect(rigidBody.velocity, hit.normal);
+				rigidBody.velocity += Vector3.up;
 				altitude = 1;
 			}
 		}
 
-		if (Physics.Raycast (transform.position, Vector3.left, out hit)) {
+		if (Physics.Raycast (transform.position, Vector3.left, out hit, 99f, onlyTerrains)) {
 			if (adjacentSolid > hit.distance)
 				adjacentSolid = hit.distance;
 		}
-		if (Physics.Raycast (transform.position, Vector3.right, out hit)) {
+		if (Physics.Raycast (transform.position, Vector3.right, out hit, 99f, onlyTerrains)) {
 			if (adjacentSolid > hit.distance)
 				adjacentSolid = hit.distance;
 		}
-		if (Physics.Raycast (transform.position, Vector3.forward, out hit)) {
+		if (Physics.Raycast (transform.position, Vector3.forward, out hit, 99f, onlyTerrains)) {
 			if (adjacentSolid > hit.distance)
 				adjacentSolid = hit.distance;
 		}
-		if (Physics.Raycast (transform.position, Vector3.back, out hit)) {
+		if (Physics.Raycast (transform.position, Vector3.back, out hit, 99f, onlyTerrains)) {
 			if (adjacentSolid > hit.distance)
 				adjacentSolid = hit.distance;
 		}
@@ -290,7 +293,7 @@ public class PlayerMovement : MonoBehaviour
 			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+7f+mouseDrag) * 0.2f;
+		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+5f+mouseDrag) * 0.1f;
 		//5 controls the top speed, 0.2 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
@@ -300,29 +303,16 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
 		//alternately, we have high drag if we're near a surface and little in the air
 
-		if (desiredMove.magnitude < 3f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+		if (rigidBody.velocity.magnitude > 10f) rigidBody.velocity.Normalize();
 		//apply the player move unless it's INSANE
+		stepsBetween = 0f;
+		//zero out the step-making part and start over
+		startPosition = Vector3.zero;
+		endPosition = rigidBody.velocity * Time.fixedDeltaTime;
+		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
 
 		velCompensated = blurFactor / (Mathf.Sqrt(rigidBody.velocity.magnitude) + 4f);
-
-
-//		speedSmoothing = 1f / (rigidBody.velocity.magnitude + 7f);
-		//this makes it settle down when moving real fast
-//		float tempSpeedRelatedBank = ((maximumBank/momentum)/Mathf.Sqrt(speedSmoothing)) / Mathf.Pow (altitude, 3f);
-		//this complicated mess gives us bank angles that aren't directly related to how jittery things are
-		
-//		if (nearGround > tempSpeedRelatedBank) nearGround = tempSpeedRelatedBank;
-//		else nearGround = Mathf.Lerp(nearGround, tempSpeedRelatedBank, speedSmoothing);
-		//we lerp the nearGround parameter here, because it'll be more fluid if it's in FixedUpdate
-		//we're also forcing it to be small if it's becoming small: if it's large that's when it's crazytown
-//		if (QualitySettings.maximumLODLevel == 0)
-//			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("MouseX") / ((chaseTilt * chaseTilt)+(200f/Mathf.Sqrt(fps))), speedSmoothing);
-		//we are applying mouse input at full crank, so we have to compensate in order to get bank angles like we expect
-//		else
-//			chaseTilt = Mathf.Lerp (chaseTilt, -Input.GetAxis ("JoystickLookLeftRight") / ((chaseTilt * chaseTilt)+(100f/Mathf.Sqrt(fps))), speedSmoothing);
-		//chaseTilt is de-jittering the bank effect. Depends what kind of control system
-		//we apply it in Update, though.
-
 	}
 
 
@@ -404,12 +394,7 @@ public class PlayerMovement : MonoBehaviour
 		}
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
-
-		chooseGuardian += 1;
-		if (chooseGuardian == 1) chooseGuardian = 0;
-		//we'll just keep this spinning, it's as good as randomizing but much cheaper
-		//we have a magic value where if it's ever higher than 1, we summon the guardian and be sure it's mad
-
+		
 		creepToRange -= 0.015f;
 		if (creepToRange < 1f) creepToRange = 1900f;
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.

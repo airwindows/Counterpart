@@ -49,6 +49,7 @@ public class SetUpBots : MonoBehaviour {
 	public void SpawnBot(int index, bool onEdge)
 	{    
 		GameObject myBot;
+		GameObject myDolly;
 		RaycastHit hit;
 
 		if (index == -1) {
@@ -59,9 +60,11 @@ public class SetUpBots : MonoBehaviour {
 		myBot = botPrefab;
 		myBot.name = "Bot";
 		myBot = Instantiate (botPrefab, Vector3.zero, Quaternion.identity) as GameObject;
+		myDolly = myBot.transform.FindChild("Dolly").gameObject;
+
 		Texture2D texture = botTexture[index];
 		
-		Renderer renderer = myBot.GetComponent<Renderer>();
+		Renderer renderer = myDolly.GetComponent<Renderer>();
 		renderer.material.mainTexture = texture;
 
 		BotMovement botmovement = myBot.GetComponent<BotMovement>();
@@ -81,15 +84,6 @@ public class SetUpBots : MonoBehaviour {
 
 		if (Physics.Raycast (spawnLocation, Vector3.up, out hit)) spawnLocation = hit.point + Vector3.up;
 		myBot.transform.position = spawnLocation;
-
-
-		if (botmovement.yourMatch == playermovement.yourMatch ) {
-			myBot.GetComponent<Rigidbody>().isKinematic = false;
-			//if it's your match, they can move even at great distances
-		} else {
-			myBot.GetComponent<Rigidbody>().isKinematic = false;
-			//everything else starts out with the physics engine not running yet! the LOD also disables the bots.
-		}
 
 		botmovement.botTarget = spawnLocation;
 		botmovement.step = 1;

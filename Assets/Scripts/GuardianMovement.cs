@@ -48,13 +48,20 @@ public class GuardianMovement : MonoBehaviour {
 	void OnCollisionEnter(Collision col) {
 		float crashScale = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 		if (setupbots.gameEnded == true) {
-			//we aren't messing with it. Hopefully this can
+			guardianCooldown = 0f;
+			guilt = 0f;
+			if (this.tag == "GuardianN") locationTarget = new Vector3(1870f, 314f, 1760f);
+			if (this.tag == "GuardianS") locationTarget = new Vector3(2007f, 292f, 1978f);
+			Vector3 rawMove = locationTarget - transform.position;
+			rawMove = rawMove.normalized;
+			myRigidbody.AddForce (rawMove);
+			//we aren't messing with it. Hopefully this can give a unbreaking end music play
 		} else {
 			if (!externalSource.isPlaying) {
-				externalSource.reverbZoneMix = crashScale * 0.00018f;
+				externalSource.reverbZoneMix = crashScale * 0.0002f;
 				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
-				externalSource.pitch = 0.36f - (crashScale * 0.0032f);
-				externalSource.volume = 9f / crashScale;
+				externalSource.pitch = 0.34f - (crashScale * 0.0033f);
+				externalSource.volume = 6f / crashScale;
 				externalSource.Play ();
 			}
 			if (col.gameObject.tag == "Player") {
@@ -129,9 +136,8 @@ public class GuardianMovement : MonoBehaviour {
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
 		audiosource.volume = 0.3f + guardianCooldown;
-
-		if (Physics.Linecast (transform.position, ourhero.transform.position))
-				audiosource.volume = 0.2f + (guardianCooldown);
+		if (Physics.Linecast (transform.position, ourhero.transform.position)) audiosource.volume = 0.2f + (guardianCooldown);
+		if (setupbots.gameEnded == true) audiosource.volume = 0f;
 
 		yield return new WaitForSeconds (.01f);
 
