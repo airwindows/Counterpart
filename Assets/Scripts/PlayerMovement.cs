@@ -64,6 +64,7 @@ public class PlayerMovement : MonoBehaviour
 	private int prevBotNumber = 500;
 	public int totalBotNumber = 500;
 	private int blurHack;
+	//private int particleFlip = 0;
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private GameObject guardian;
@@ -198,11 +199,15 @@ public class PlayerMovement : MonoBehaviour
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 
-		particlesystem.transform.localPosition = Vector3.forward * 0.6f;
+		//particleFlip += 1;
+		//if (particleFlip > 1) particleFlip = 0;
+		//emit particle only every other fixedupdate;
+		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
 			if (!particlesystem.isPlaying) particlesystem.Play ();
-			particlesystem.emissionRate = 20.0f;
-		} else particlesystem.emissionRate = 0.0f;
+			//if (particleFlip == 0)
+			particlesystem.Emit(1);
+		}
 		//this too can be fired by either system with no problem
 
 		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, 99999f, onlyTerrains)) {
@@ -298,7 +303,7 @@ public class PlayerMovement : MonoBehaviour
 			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+5f+mouseDrag) * 0.1f;
+		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+6f+mouseDrag) * 0.2f;
 		//5 controls the top speed, 0.2 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check

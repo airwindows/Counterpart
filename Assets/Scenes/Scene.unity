@@ -309,8 +309,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1760693728}
-  - {fileID: 1936523725}
   - {fileID: 859958750}
+  - {fileID: 1936523725}
   m_Father: {fileID: 1693658934}
   m_RootOrder: 0
 --- !u!1 &242970428
@@ -1558,7 +1558,7 @@ ParticleSystem:
   InitialModule:
     enabled: 1
     startLifetime:
-      scalar: 2
+      scalar: 3
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -1718,7 +1718,7 @@ ParticleSystem:
         rgba: 4294967295
       minMaxState: 0
     startSize:
-      scalar: .400000006
+      scalar: .5
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -1774,7 +1774,7 @@ ParticleSystem:
         m_PostInfinity: 2
       minMaxState: 3
     gravityModifier: 0
-    inheritVelocity: 1.10000002
+    inheritVelocity: 2
     maxNumParticles: 4000
   ShapeModule:
     serializedVersion: 2
@@ -1794,7 +1794,7 @@ ParticleSystem:
     enabled: 1
     m_Type: 0
     rate:
-      scalar: 30
+      scalar: 0
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -1831,21 +1831,21 @@ ParticleSystem:
     time3: 0
     m_BurstCount: 0
   SizeModule:
-    enabled: 0
+    enabled: 1
     curve:
       scalar: 1
       maxCurve:
         serializedVersion: 2
         m_Curve:
         - time: 0
-          value: .274193525
-          inSlope: -.0155963404
-          outSlope: -.0155963404
+          value: .45324111
+          inSlope: 2.20614028
+          outSlope: 2.20614028
           tangentMode: 0
         - time: 1
-          value: .213709682
-          inSlope: -5.16632748
-          outSlope: -5.16632748
+          value: 1
+          inSlope: .0433953069
+          outSlope: .0433953069
           tangentMode: 0
         m_PreInfinity: 2
         m_PostInfinity: 2
@@ -2585,7 +2585,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 224352052}
-  m_RootOrder: 2
+  m_RootOrder: 1
 --- !u!1 &864332249
 GameObject:
   m_ObjectHideFlags: 0
@@ -4611,7 +4611,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1752922340
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4626,8 +4626,8 @@ RectTransform:
   m_RootOrder: 4
   m_AnchorMin: {x: .5, y: .5}
   m_AnchorMax: {x: .5, y: .5}
-  m_AnchoredPosition: {x: -12.5, y: -12.5}
-  m_SizeDelta: {x: 24, y: 24}
+  m_AnchoredPosition: {x: -12, y: -13}
+  m_SizeDelta: {x: 24.5, y: 24.5}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1752922341
 MonoBehaviour:
@@ -4804,7 +4804,7 @@ Transform:
   m_Children:
   - {fileID: 716947620}
   m_Father: {fileID: 224352052}
-  m_RootOrder: 1
+  m_RootOrder: 2
 --- !u!114 &1936523726
 MonoBehaviour:
   m_ObjectHideFlags: 0
