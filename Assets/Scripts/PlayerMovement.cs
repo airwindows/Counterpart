@@ -108,6 +108,9 @@ public class PlayerMovement : MonoBehaviour
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
+		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
+		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
+
 	}
 
 	void Start () {
@@ -263,21 +266,9 @@ public class PlayerMovement : MonoBehaviour
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 
-		if (Input.GetKey (KeyCode.PageUp)) {
-			//trigger new level load
-			levelNumber = levelNumber + countdown;
-			if (levelNumber < 2) levelNumber = 2;
-			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
-			Application.LoadLevel("Scene");
-		}
-
-		//particleFlip += 1;
-		//if (particleFlip > 1) particleFlip = 0;
-		//emit particle only every other fixedupdate;
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
 			if (!particlesystem.isPlaying) particlesystem.Play ();
-			//if (particleFlip == 0)
 			particlesystem.Emit(1);
 		}
 		//this too can be fired by either system with no problem
@@ -415,6 +406,18 @@ public class PlayerMovement : MonoBehaviour
 		}
 		//the notorious cursor code! Kills builds on Unity 5.2 and up
 
+		if (setupbots.gameEnded && Input.GetKey (KeyCode.Space)) {
+			//trigger new level load on completing of level
+			levelNumber = levelNumber + countdown;
+			if (levelNumber < 2) levelNumber = 2;
+			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
+			PlayerPrefs.SetInt ("levelNumber", levelNumber);
+			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+			PlayerPrefs.Save();
+			Application.LoadLevel("Scene");
+		}
+		//save prefs to disk so we remember. Currently on pageup
+
 		timeBetweenGuardians *= 0.9995f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
 
@@ -446,10 +449,6 @@ public class PlayerMovement : MonoBehaviour
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
-
-		//if (fps < 30) System.GC.Collect();
-		//in the event of the game hammering on something, kick in some manual garbage collections in the coroutine
-		//if we're running super well we need never see this
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.x > 4000f) {
@@ -509,7 +508,6 @@ public class PlayerMovement : MonoBehaviour
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
 		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
-		
 		yield return new WaitForSeconds(.016f);
 
 	}

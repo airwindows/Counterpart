@@ -373,7 +373,6 @@ public class BotMovement : MonoBehaviour
 	
 	IEnumerator SlowUpdates ()
 	{
-
 		step += 1;
 		step += (botBrain [brainPointer].r / 100);
 		//red bots are more agitated, to a point.
