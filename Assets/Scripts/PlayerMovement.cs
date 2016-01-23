@@ -14,12 +14,28 @@ using UnityEngine.UI;
 public class PlayerMovement : MonoBehaviour
 {
 	public GameObject ourlevel;
+	public static int levelNumber = 2;
+	public static int maxlevelNumber = 2;
+	public static Vector3 playerPosition = new Vector3 (1644f, 2000f, 2083f);
+	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
+	public static float initialTurn = 0f;
+	public static float initialUpDown = 0f;
+	public static float guardianHostility = 0f;
 	public Camera mainCamera;
 	public Camera wireframeCamera;
 	public Camera skyboxCamera;
 	public Light headlight;
 	public GameObject fpsText;
 	public GameObject botsText;
+	public GameObject maxbotsText;
+	public GameObject countdownText;
+	public Text fpsTextObj;
+	public Text botsTextObj;
+	public Text maxbotsTextObj;
+	public Text countdownTextObj;
+	private int countdown;
+	private int countdownTicker = 30;
+	//we're running the physics engine at 30 fps
 	public GameObject cameraDolly;
 	public ParticleSystem particlesystem;
 	public AnimationCurve slopeCurveModifier = new AnimationCurve (new Keyframe (-90.0f, 1.0f), new Keyframe (0.0f, 1.0f), new Keyframe (90.0f, 0.0f));
@@ -44,8 +60,6 @@ public class PlayerMovement : MonoBehaviour
 	public float mouseSensitivity = 100f;
 	public float mouseDrag = 0f;
 	public float baseJump = 2.5f;
-	public float initialTurn = 0f;
-	public float initialUpDown = 0f;
 	public float maximumBank = 1f;
 	private Vector3 desiredMove = Vector3.zero;
 	private bool releaseJump = true;
@@ -60,22 +74,25 @@ public class PlayerMovement : MonoBehaviour
 	public Vector3 desiredAimOffsetPosition;
 	public float fps = 60f;
 	private float prevFps = 60f;
-	public int botNumber = 500;
-	private int prevBotNumber = 500;
-	public int totalBotNumber = 500;
+	public int botNumber;
+	private int prevBotNumber = -1;
+	public int totalBotNumber;
 	private int blurHack;
 	//private int particleFlip = 0;
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private GameObject guardian;
 	private GuardianMovement guardianmovement;
+	public Vector3 locationOfCounterpart;
 	private RaycastHit hit;
 	private float cameraZoom = 0f;
 	public float timeBetweenGuardians = 1f;
-	public float creepToRange = 100f;
+	public float creepToRange;
 	public float creepRotAngle = 1f;
 	private float blurFactor = 0.001f;
 	private float velCompensated = 0.00001f;
+	private GameObject level;
+	private SetUpBots setupbots;
 
 
 	void Awake ()
@@ -87,18 +104,46 @@ public class PlayerMovement : MonoBehaviour
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
+		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
+		level = GameObject.FindGameObjectWithTag ("Level");
+		setupbots = level.GetComponent<SetUpBots> ();
+		locationOfCounterpart = Vector3.zero;
+	}
+
+	void Start () {
+		if (Physics.Raycast (playerPosition, Vector3.down, out hit)) playerPosition = hit.point + Vector3.up;
+		transform.position = playerPosition;
 		startPosition = transform.position;
 		endPosition = transform.position;
 		stepsBetween = 0f;
 		baseJump = 2.5f;
 		blurHack = 0;
-		creepToRange = UnityEngine.Random.Range (creepToRange/2f, creepToRange);
+		botNumber = levelNumber;
+		totalBotNumber = levelNumber;
+		fpsTextObj = fpsText.GetComponent<Text> ();
+		botsTextObj = botsText.GetComponent<Text> ();
+		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
+		countdownTextObj = countdownText.GetComponent<Text> ();
+		//start off with the full amount and no meter updating
+		creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
+		maxbotsTextObj.text = string.Format("maxbots:{0:0.}", maxlevelNumber);
+		countdown = 3600; // 60 minutes
+		if (levelNumber < 1800) countdown = 1800; //30 minutes
+		if (levelNumber < 900) countdown = 900; //15 minutes
+		if (levelNumber < 600) countdown = 600; //10 minutes
+		if (levelNumber < 300) countdown = 300; // 5 minutes
+		if (levelNumber < 180) countdown = 180; // 3 minutes
+		if (levelNumber < 120) countdown = 120; // 2 minutes
+		if (levelNumber < 60) countdown = 60;  // 1 minute
+		countdownTextObj.text = string.Format("{0:0.}s", countdown);
+		//set the timer to 
+
+
 	}
 
 	void Update ()
@@ -166,6 +211,25 @@ public class PlayerMovement : MonoBehaviour
 		//For this reason, if framerate is known to be always higher than 50fps, stuff can be put here to help the engine run faster
 		//but if framerate's running low, we are not actually getting a spaced out distribution of frames, only a staggering of them
 		//to allow physics to run correctly.
+		playerPosition = transform.position;
+		playerRotation = transform.rotation;
+		countdownTicker -= 1;
+		if (countdownTicker < 1) {
+			countdownTicker = 30;
+			if (setupbots.gameEnded == false) countdown -= 1;
+			//we stop the clock when we win. Then the saved seconds can be applied to the score
+			countdownTextObj.text = string.Format("{0:0.}s", countdown);
+		}
+
+		if (Physics.Raycast (playerPosition, Vector3.down, out hit) == false) {
+			playerPosition = new Vector3 (playerPosition.x, 99999f, playerPosition.z);
+			if (Physics.Raycast (playerPosition, Vector3.down, out hit)) {
+				playerPosition = hit.point + Vector3.up;
+				transform.position = playerPosition;
+			}
+		}
+		//insanity check to stop falling into infinity
+
 		Vector2 input = Vector2.zero;
 		if (QualitySettings.maximumLODLevel == 0) input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
 		//keyboard input
@@ -199,6 +263,14 @@ public class PlayerMovement : MonoBehaviour
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 
+		if (Input.GetKey (KeyCode.PageUp)) {
+			//trigger new level load
+			levelNumber = levelNumber + countdown;
+			if (levelNumber < 2) levelNumber = 2;
+			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
+			Application.LoadLevel("Scene");
+		}
+
 		//particleFlip += 1;
 		//if (particleFlip > 1) particleFlip = 0;
 		//emit particle only every other fixedupdate;
@@ -229,10 +301,10 @@ public class PlayerMovement : MonoBehaviour
 					if (audiosource.clip != botBeep)
 						audiosource.clip = botBeep;
 					if (yourMatchOccluded) {
-						audiosource.volume = 0.1f;
+						audiosource.volume = 0.15f;
 						audiosource.reverbZoneMix = 1.9f;
 					} else {
-						audiosource.volume = 0.1f;
+						audiosource.volume = 0.15f;
 						//we will keep it the same so it sounds the same: increasing volume
 						//caused it to sound different inc. in the reverb
 						float verbZone = 2f - (70f / yourMatchDistance);
@@ -245,8 +317,6 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//this is our geiger counter for our bot
 		}
-
-		StartCoroutine ("SlowUpdates");
 
 		if (Physics.Raycast (transform.position, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			altitude = hit.distance;
@@ -303,7 +373,7 @@ public class PlayerMovement : MonoBehaviour
 			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+6f+mouseDrag) * 0.2f;
+		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+4f+mouseDrag) * 0.18f;
 		//5 controls the top speed, 0.2 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
@@ -323,6 +393,8 @@ public class PlayerMovement : MonoBehaviour
 		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
 
 		velCompensated = blurFactor / (Mathf.Sqrt(rigidBody.velocity.magnitude) + 4f);
+		
+		StartCoroutine ("SlowUpdates");
 	}
 
 
@@ -357,6 +429,12 @@ public class PlayerMovement : MonoBehaviour
 			backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
 			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
 		}
+
+		if ((fps > 20f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		//uses totalBotNumber because if we start killing them, the top number goes down!
+
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.z < 0f) {
@@ -369,7 +447,7 @@ public class PlayerMovement : MonoBehaviour
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 
-		if (fps < 30) System.GC.Collect();
+		//if (fps < 30) System.GC.Collect();
 		//in the event of the game hammering on something, kick in some manual garbage collections in the coroutine
 		//if we're running super well we need never see this
 		yield return new WaitForSeconds(.016f);
@@ -385,6 +463,12 @@ public class PlayerMovement : MonoBehaviour
 		float recip = 1.0f / backgroundSound.gain;
 		recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
+
+		if ((fps > 20f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		//uses totalBotNumber because if we start killing them, the top number goes down!
+
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.z > 4000f) {
@@ -404,29 +488,28 @@ public class PlayerMovement : MonoBehaviour
 		if (botNumber > totalBotNumber) botNumber = totalBotNumber;
 		//it insists on finding gameObjects when we've killed bots, so we force it to be what we want
 		//with this we can tweak sensitivity to things like bot "activityRange"
-
-		if ((fps > 30f) && botNumber < totalBotNumber) {
-				ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
-		//uses totalBotNumber because if we start killing them, the top number goes down!
-
-
+		
 		if (fps != prevFps) {
-			fpsText.GetComponent<Text>().text = string.Format ("fps:{0:0.}", fps);
+			fpsTextObj.text = string.Format ("fps:{0:0.}", fps);
 			prevFps = fps;
 		}
 		if (botNumber != prevBotNumber) {
-			botsText.GetComponent<Text>().text = string.Format("bots:{0:0.}", botNumber);
+			botsTextObj.text = string.Format("bots:{0:0.}", botNumber);
 			prevBotNumber = botNumber;
 		}
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 		
 		creepToRange -= 0.015f;
-		if (creepToRange < 1f) creepToRange = 1900f;
+		if (creepToRange < 1f) creepToRange =  (float)Mathf.Min (1800, levelNumber * 2);
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
 
+		if ((fps > 20f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		//uses totalBotNumber because if we start killing them, the top number goes down!
+		
 		yield return new WaitForSeconds(.016f);
 
 	}

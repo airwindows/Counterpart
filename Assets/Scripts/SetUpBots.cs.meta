@@ -1,12 +1,13 @@
 fileFormatVersion: 2
 guid: 0079fb85f17ec48e997f428d7ba46e8d
-timeCreated: 1452112506
+timeCreated: 1453507278
 licenseType: Free
 MonoImporter:
   serializedVersion: 2
   defaultReferences:
-  - botPrefab: {fileID: 109700, guid: 6262322557ee04931be5bd3ba64fc2b1, type: 2}
+  - botPrefab: {fileID: 151622, guid: 6262322557ee04931be5bd3ba64fc2b1, type: 2}
   - botParent: {fileID: 181790, guid: 127f533fd38874ac89e7ce83b905cb5e, type: 2}
+  - baseTerrain: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

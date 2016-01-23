@@ -50,11 +50,14 @@ public class BotMovement : MonoBehaviour
 	private PlayerMovement playermovement;
 	private GuardianMovement guardianNmovement;
 	private GameObject level;
+	private SetUpBots setupbots;
 	private GameObject guardianN;
 	private GameObject guardianS;
-	private SetUpBots setupbots;
 	private GameObject logo;
 	private GameObject botZaps;
+	private ParticleSystem botZapsParticles;
+	private Vector3 overThere;
+	private bool watchingForYou;
 
 	void Awake ()
 	{
@@ -66,8 +69,8 @@ public class BotMovement : MonoBehaviour
 		audioSource = GetComponent<AudioSource> ();
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement> ();
-//		maincamera = playermovement.mainCamera;
 		level = GameObject.FindGameObjectWithTag ("Level");
+		setupbots = level.GetComponent<SetUpBots> ();
 		guardianN = GameObject.FindGameObjectWithTag ("GuardianN");
 		guardianNmovement = guardianN.GetComponent<GuardianMovement> ();
 		//we assign this so that the bot can keep sending whatever location data to whichever AI
@@ -75,12 +78,14 @@ public class BotMovement : MonoBehaviour
 		//should be pretty cheap to keep references for this stuff around
 		//using this, we can punch a target or chase behavior into a specific guardian,
 		//without it having to go through all the bots when it needs to react to a specific bot.
-		setupbots = level.GetComponent<SetUpBots> ();
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
+		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		otherBots = 1 << LayerMask.NameToLayer ("Default");
 		notEnded = true;
+		watchingForYou = false;
+		overThere = Vector3.zero;
 	}
 
 	void OnCollisionEnter (Collision col)
@@ -89,9 +94,12 @@ public class BotMovement : MonoBehaviour
 		//no matter what, if we collide we trigger the jump counter
 		if (col.gameObject.tag == "Player" && notEnded) {
 
-			if (col.relativeVelocity.magnitude > 25f) {
+			if (col.relativeVelocity.magnitude > 30f) {
 				playermovement.timeBetweenGuardians = 1f;
 				//you bonked a bot so the guardian will get between you
+				watchingForYou = false;
+				overThere = Vector3.zero;
+				//you pissed it off and it won't help you until you re-ask
 				brainPointer += 1;
 				if (brainPointer >= botBrain.Length)
 					brainPointer = 0;
@@ -100,13 +108,13 @@ public class BotMovement : MonoBehaviour
 				audioSource.reverbZoneMix = 0f;
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 				audioSource.volume = 0.5f;
-
+				PlayerMovement.guardianHostility += 0.01f;
 				guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (ourhero.GetComponent<Rigidbody> ().velocity.magnitude * 0.025f));
 				//lerp value, slowly diminishes. Multiple kills can make a guardian super aggressive. Or if you are super speeding
 				guardianNmovement.locationTarget = transform.position;
 				//whether or not we killed the other bot, we are going to trigger the guardian
 
-				if ((col.relativeVelocity.magnitude > 60f) && (setupbots.gameEnded == false)) {
+				if ((col.relativeVelocity.magnitude > 40f) && (setupbots.gameEnded == false)) {
 					//if you've won the game you can't kill bots, it would lack class
 					audioSource.clip = BotCrashTinkle;
 					audioSource.reverbZoneMix = 0f;
@@ -141,6 +149,7 @@ public class BotMovement : MonoBehaviour
 						//REKKT. Bot's brain is destroyed, after setting its color to dim.
 						playermovement.baseJump = playermovement.baseJump * 0.98f;
 						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
+						PlayerMovement.guardianHostility += 0.1f;
 						//if you go around killing bots you lose your jump.
 					}//when over 40, decide if you kill entire game or just the other bot.
 				}//also over 25
@@ -191,6 +200,9 @@ public class BotMovement : MonoBehaviour
 			//with the player
 		} else {
 			//bots hitting bots here
+			PlayerMovement.guardianHostility -= 0.01f;
+			if (PlayerMovement.guardianHostility < 0f) PlayerMovement.guardianHostility = 0f;
+	
 			if (col.relativeVelocity.magnitude > (playermovement.timeBetweenGuardians * 400f)) {
 				//amount of this gives us how active the guardians are
 				audioSource.clip = BotCrash;
@@ -252,11 +264,17 @@ public class BotMovement : MonoBehaviour
 				audioSource.pitch = voicePitch;
 			audioSource.Play ();
 
-//			botZaps.transform.position = transform.position;
-//			botZaps.transform.LookAt (ourhero.transform.position);
-//			botZaps.GetComponent<ParticleSystem> ().Emit(1);
-			//will fire a particle in the direction of where it last saw the one we want
+			if (Vector3.Distance (transform.position, ourhero.transform.position) < 200f) watchingForYou = true;
+			//if we're near enough that the bot knows you're the one asking, then it will watch for your counterpart
 
+			if ((watchingForYou == true) && (overThere != Vector3.zero)) {
+				botZaps.transform.position = transform.position;
+				botZaps.transform.LookAt (overThere);
+				if (playermovement.yourMatch == yourMatch) botZaps.transform.LookAt (botZaps.transform.position + Vector3.up);
+				botZapsParticles.startSize = 3f;
+				botZapsParticles.Emit(1);
+			}
+			//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 		}
 		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourhero.GetComponent<Rigidbody> ().velocity, Vector3.zero, 0.4f), (botBrain [voicePointer].g / 255f));
 		//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
@@ -299,6 +317,7 @@ public class BotMovement : MonoBehaviour
 		//bot's basic height off ground
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.004)) {
+			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
 			if (rawMove.magnitude > 100f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
@@ -316,9 +335,9 @@ public class BotMovement : MonoBehaviour
 		desiredMove /= adjacentSolid;
 		//we're adding the move to the extent that we're near a surface
 
-		desiredMove *= (0.5f + (0.00005f * brainR) - (0.0001f * brainB));
+		desiredMove *= (0.5f + (0.00002f * (brainR + brainG)));
 		//scale everything back depending on the R factor
-		lerpedMove = Vector3.Lerp (lerpedMove, desiredMove, 0.0001f + (0.002f * brainR));
+		lerpedMove = Vector3.Lerp (lerpedMove, desiredMove, 0.001f + (0.0001f * brainR));
 		//texture red makes the bots go more hyper!
 
 		rigidBody.AddForce (lerpedMove / adjacentSolid, ForceMode.Impulse);
@@ -366,6 +385,14 @@ public class BotMovement : MonoBehaviour
 		if (transform.position.x < 0f) {
 			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
 		}
+
+		if (Physics.Linecast (transform.position, (playermovement.locationOfCounterpart + (transform.position - playermovement.locationOfCounterpart).normalized)) == false) {
+			//returns true if there's anything in the way. If there is nothing 
+			//(may need to offset the destination as we might hit the lucky bot)
+			overThere = playermovement.locationOfCounterpart;
+			//now the bot knows where to emit particles when asked!
+		}
+
 		yield return new WaitForSeconds (.01f);
 		//walls! We bounce off the four walls of the world rather than falling out of it
 
@@ -396,7 +423,8 @@ public class BotMovement : MonoBehaviour
 			if (Physics.Linecast (transform.position, botTarget, otherBots) && !setupbots.gameEnded) {
 				botZaps.transform.position = transform.position;
 				botZaps.transform.LookAt (botTarget);
-				botZaps.GetComponent<ParticleSystem> ().Emit (1);
+				botZapsParticles.startSize = 0.5f;
+				botZapsParticles.Emit (1);
 				//and fires a particle if it's looking at another bot
 				//and then it beeps, either verbed or not
 				if (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
@@ -435,11 +463,11 @@ public class BotMovement : MonoBehaviour
 			Color c = new Color (brainR, brainG, brainB);
 			SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 			//this is giving us 360 degree hue, and then saturation and luminance.
-			float botDistance = (Mathf.Abs (color.s) + 1f) * playermovement.creepToRange;
+			float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
 			float adjustedHueAngle = color.h + playermovement.creepRotAngle;
-			Vector3 spawnLocation = new Vector3 (1580f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 1f, 2190f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+			Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 			//aim bot at target
-			if (Physics.Raycast (spawnLocation, Vector3.up, out hit, 999f, onlyTerrains))
+			if (Physics.Raycast (spawnLocation, Vector3.down, out hit, 99999f, onlyTerrains))
 				botTarget = hit.point + Vector3.up;
 			else
 				botTarget = spawnLocation;
@@ -484,10 +512,11 @@ public class BotMovement : MonoBehaviour
 		//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 		if (playermovement.yourMatch == yourMatch) {
-			playermovement.yourMatchDistance = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position)) * 7f;
+			playermovement.yourMatchDistance = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position)) * 2f;
 			playermovement.yourMatchOccluded = false;
+			playermovement.locationOfCounterpart = transform.position;
 			//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
-
+			//also we update you with its location so bots looking for you can know if they see it.
 			if (Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains))
 				playermovement.yourMatchOccluded = true;
 			//by doing this, we can see whether there's anything in the way of the ray between match and player

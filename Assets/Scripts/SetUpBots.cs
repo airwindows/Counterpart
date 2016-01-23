@@ -5,6 +5,7 @@ public class SetUpBots : MonoBehaviour {
 	
 	public GameObject botPrefab;
 	public GameObject botParent;
+	public GameObject baseTerrain;
 	private GameObject ourhero;
 	private PlayerMovement playermovement;
 	public Texture2D[] botTexture;
@@ -13,36 +14,54 @@ public class SetUpBots : MonoBehaviour {
 	public int yourMatch;
 
 
-	//must be set up in the editor as LoadAll no worky
+	//Texture array must be set up in the editor as LoadAll no worky
 	//to do this, lock the inspector and then select all textures and drag them onto the array
 	//this is also a single script that remains attached to the level
-	
-	void Start () {
 
-		gameEnded = false;
-		killed = false;
-		//we've only just begun!
+	void Awake () {
+		//preserve setup state between levels
 		botParent = GameObject.FindGameObjectWithTag ("AllBots");
-
-		yourMatch = Random.Range(0, botTexture.Length);
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
+	}
+	
+	void Start () {
+		RaycastHit hit;
+		gameEnded = false;
+		killed = false;
+		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, (float)PlayerMovement.levelNumber, 4000f);
+		//must be after Awake so we can get the level number in Player
+
+		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
+		if (Physics.Raycast (PlayerMovement.playerPosition, Vector3.down, out hit)) PlayerMovement.playerPosition = hit.point + Vector3.up;
+		playermovement.transform.position = PlayerMovement.playerPosition;
+		//we only need to access position, because position might need to be updated.
+		//rotation and the mouse look offsets are static but fine where they are.
+
+		int randBots = botTexture.Length;
+		if (randBots > PlayerMovement.levelNumber) randBots = PlayerMovement.levelNumber;
+		//for the setup, we will grind through only as many bots as fit within the level number
+		//so if we're on level 2, you're always one of the first 2, though additional ones could be anything
+		//if they're spawned through the extra-bot-spawn mechanics
+
+		playermovement.totalBotNumber = PlayerMovement.levelNumber;
+		playermovement.creepToRange = Mathf.Min (1900, PlayerMovement.levelNumber * 2);
+		//we'll have the bot range clamped
+
+		yourMatch = Random.Range(0, randBots);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
 		//we have now established that you are a particular bot
 
-		//Component[] renderers = ourhero.GetComponentsInChildren(typeof(Renderer));
-		//foreach(Renderer renderer in renderers) renderer.material.mainTexture = botTexture[yourMatch];
-		//this will texture everything, including particles, as you
+		SpawnBot (yourMatch, true);
+		//and we spawn your counterpart. Now, anything else is random
 		
-		
-		for (int i = 0; i < botTexture.Length; i++) {
+		for (int i = 0; i < randBots; i++) {
 			if (i != yourMatch) {
 				SpawnBot (i, false);
 			}
-			else SpawnBot (i, true);
 		}
-		//we generate one of every bot, to start off with
+		//we generate one of every bot, to start off with, skipping the counterpart that we've just explicitly made.
 		//The rest will be generated on the fly by the program, until it hits framerate and can't maintain 60fps.
 	}
 	
@@ -55,7 +74,9 @@ public class SetUpBots : MonoBehaviour {
 		if (index == -1) {
 			index = Random.Range(0, botTexture.Length);
 			if (index == yourMatch) return;
-		} //we switch to a random index and if it's your match, return without creating anything
+		}
+		//if we're passed -1 by the respawn mechanic in PlayerMovement,
+		//we switch to a random index and if it's your match, return without creating anything
 
 		myBot = botPrefab;
 		myBot.name = "Bot";
@@ -77,12 +98,13 @@ public class SetUpBots : MonoBehaviour {
 		Color c = new Color(botmovement.botBrain[step].r, botmovement.botBrain[step].g, botmovement.botBrain[step].b);
 		HSLColor color = HSLColor.FromRGBA(c); //this is giving us 360 degree hue, and then saturation and luminance.
 
-		float botDistance = (Mathf.Abs(color.s)+1f) * playermovement.creepToRange;
-		if (onEdge) botDistance = 1800f;
-		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
-		Vector3 spawnLocation = new Vector3 (1580f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 1f, 2190f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+		float botDistance = Mathf.Abs(1f - color.s) * playermovement.creepToRange;
+		if (onEdge) botDistance =  Mathf.Min (1800, PlayerMovement.levelNumber * 2);
+		float adjustedHueAngle = Random.Range(0, 360);
+		//we'll have them coming from wherever, they'll herd up soon enough
+		Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 
-		if (Physics.Raycast (spawnLocation, Vector3.up, out hit)) spawnLocation = hit.point + Vector3.up;
+		if (Physics.Raycast (spawnLocation, Vector3.down, out hit)) spawnLocation = hit.point + Vector3.up;
 		myBot.transform.position = spawnLocation;
 
 		botmovement.botTarget = spawnLocation;

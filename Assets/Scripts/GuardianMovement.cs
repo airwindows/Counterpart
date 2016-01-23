@@ -86,7 +86,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.05f + (guardianCooldown * guardianCooldown * 0.03f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.02f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -97,11 +97,7 @@ public class GuardianMovement : MonoBehaviour {
 	}
 
 	IEnumerator SlowUpdates () {
-
-		float maxAnger = Mathf.Sqrt (501 - playermovement.totalBotNumber);
-		if (guardianCooldown > maxAnger) guardianCooldown = maxAnger;
-		//clamp it so it only starts targeting you when you're bad
-		if (playermovement.totalBotNumber < 500) locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, maxAnger/playermovement.totalBotNumber);
+		locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, PlayerMovement.guardianHostility);
 		//this ought to make it go for the player pretty hard if they kill bots.
 		//otherwise, it just goes to the source of the altercation which might include you.
 		yield return new WaitForSeconds (0.01f);
