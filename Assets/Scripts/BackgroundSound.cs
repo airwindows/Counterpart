@@ -79,20 +79,22 @@ public class BackgroundSound : MonoBehaviour
 		if (brightness < 0.1f)
 			brightness = 0.1f;
 		if (brightness > 1.0f)
-			brightness = 1.0f;
+			brightness = 0.1f;
 		if (whoosh < 0.0f)
 			whoosh = 0.0f;
 		if (whoosh > 0.5f)
-			whoosh = 0.5f;
+			whoosh = 0.0f;
 		if (whooshLowCut < 0.0f)
 			whooshLowCut = 0.0f;
 		if (whooshLowCut > 0.5f)
-			whooshLowCut = 0.5f;
+			whooshLowCut = 0.0f;
 		if (gain < 0.0f)
 			gain = 0.0f;
 		if (gain > 1.0f)
-			gain = 1.0f;
+			gain = 0.1f;
 		//sanity checking because who knows what we'll get handed
+		//note we have wrap-around values where if they're going to go insanely loud,
+		//we kill it entirely.
 		appliedBrightness = Mathf.Pow (brightness, 3f);
 		appliedGain = Mathf.Pow (gain * 0.5f, 2f);
 		//give us a better adjustment range

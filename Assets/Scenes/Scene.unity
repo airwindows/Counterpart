@@ -580,7 +580,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'maxbots : 1'
+  m_Text: 'score : 1'
 --- !u!222 &294294284
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4037,6 +4037,7 @@ MonoBehaviour:
   clampRotateAngle: 6.28318548
   desiredAimOffsetPosition: {x: 0, y: 0, z: 0}
   fps: 60
+  cullRange: 10
   botNumber: 10
   totalBotNumber: 10
   locationOfCounterpart: {x: 0, y: 0, z: 0}

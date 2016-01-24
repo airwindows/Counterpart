@@ -12,6 +12,7 @@ public class SetUpBots : MonoBehaviour {
 	public bool gameEnded = true;
 	public bool killed = true;
 	public int yourMatch;
+	private float distance;
 
 
 	//Texture array must be set up in the editor as LoadAll no worky
@@ -45,7 +46,7 @@ public class SetUpBots : MonoBehaviour {
 		//if they're spawned through the extra-bot-spawn mechanics
 
 		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		playermovement.creepToRange = Mathf.Min (1900, PlayerMovement.levelNumber * 2);
+		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber * 2);
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);
@@ -95,23 +96,39 @@ public class SetUpBots : MonoBehaviour {
 		//and the bots must know what number they are, because you'll match with them
 
 		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
-		Color c = new Color(botmovement.botBrain[step].r, botmovement.botBrain[step].g, botmovement.botBrain[step].b);
-		HSLColor color = HSLColor.FromRGBA(c); //this is giving us 360 degree hue, and then saturation and luminance.
+		float spacing = Random.Range (1f, playermovement.creepToRange);
+		float degrees = Random.Range (0f, 360f);
 
-		float botDistance = Mathf.Abs(1f - color.s) * playermovement.creepToRange;
-		if (onEdge) botDistance =  Mathf.Min (1800, PlayerMovement.levelNumber * 2);
-		float adjustedHueAngle = Random.Range(0, 360);
-		//we'll have them coming from wherever, they'll herd up soon enough
-		Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 
-		if (Physics.Raycast (spawnLocation, Vector3.down, out hit)) spawnLocation = hit.point + Vector3.up;
+		//Vector3 spawnLocation = new Vector3 (Random.Range(1, 3999), 99999f, Random.Range(1, 3999));
+		Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+
+		if (Physics.Raycast (spawnLocation, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
+			spawnLocation = hit.point + Vector3.up;
+		}
+		else {
+			if (index != yourMatch) Destroy (myBot.transform.gameObject);
+			else spawnLocation = hit.point + Vector3.up;
+		}
+		//if we're not actually on the terrain, nope on this bot position
+
 		myBot.transform.position = spawnLocation;
 
+		distance = Vector3.Distance (myBot.transform.position, ourhero.transform.position);
+		if (distance > (playermovement.fps * playermovement.cullRange) && (index != yourMatch)) {
+			Destroy (myBot.transform.gameObject);
+			//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
+			//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 100 away,
+			//at full 60fps vSync you have to be 600 away to be culled. And of course unsynced rapidly makes them uncullable.
+			//since this is in the spawner, it'd be nice if we could just not create it but to get the location we need to access the brain.
+			//Also, we must explicitly check that it's not the counterpart, destroying that breaks the game
+		}
+
 		botmovement.botTarget = spawnLocation;
-		botmovement.step = 1;
+		botmovement.step = step;
 		botmovement.brainPointer = Random.Range(0, botmovement.botBrain.Length);
+		botmovement.jumpCounter = botmovement.brainPointer;
 		botmovement.withinRange = true;
-		//we randomize the step so the bot pairs aren't synced to start with
 		myBot.transform.SetParent (botParent.transform);
 
 	}

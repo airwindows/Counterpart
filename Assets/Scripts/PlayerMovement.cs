@@ -48,6 +48,7 @@ public class PlayerMovement : MonoBehaviour
 	private Rigidbody rigidBody;
 	private Vector3 startPosition;
 	private Vector3 endPosition;
+	private Vector3 lastPlayerPosition;
 	private float stepsBetween;
 	private LayerMask onlyTerrains;
 	private SphereCollider sphereCollider;
@@ -75,6 +76,7 @@ public class PlayerMovement : MonoBehaviour
 	public Vector3 desiredAimOffsetPosition;
 	public float fps = 60f;
 	private float prevFps = 60f;
+	public float cullRange = 20f;
 	public int botNumber;
 	private int prevBotNumber = -1;
 	public int totalBotNumber;
@@ -131,6 +133,7 @@ public class PlayerMovement : MonoBehaviour
 		transform.position = playerPosition;
 		startPosition = transform.position;
 		endPosition = transform.position;
+		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
 		baseJump = 2.5f;
 		blurHack = 0;
@@ -147,25 +150,24 @@ public class PlayerMovement : MonoBehaviour
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		maxbotsTextObj.text = string.Format("maxbots:{0:0.}", maxlevelNumber);
-		countdown = 3600; // 60 minutes
-		if (levelNumber < 1800) countdown = 1800; //30 minutes
-		if (levelNumber < 900) countdown = 900; //15 minutes
-		if (levelNumber < 600) countdown = 600; //10 minutes
-		if (levelNumber < 300) countdown = 300; // 5 minutes
-		if (levelNumber < 180) countdown = 180; // 3 minutes
-		if (levelNumber < 120) countdown = 120; // 2 minutes
-		if (levelNumber < 60) countdown = 60;  // 1 minute
+		maxbotsTextObj.text = string.Format("score:{0:0.}", maxlevelNumber);
+		countdown = 60 + (int)(Math.Sqrt(levelNumber)*10f); // scales to size but gets very hard to push
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
-
-
 	}
 
 	void OnApplicationQuit () {
 		if ((QualitySettings.maximumLODLevel == 0) && (countdown < 0)) levelNumber = levelNumber + countdown;
+		//when quitting out of the game, you can't just repeatedly quit with available time to gain levels.
+		//But, if you're playing timed and you've gone negative, you will pay the negative second cost even if you quit the game
+		//so it becomes a drama of, quit and take your losses? Or keep trying to find the counterpart at a reduced time cost?
 		if (levelNumber < 2) levelNumber = 2;
 		if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
+		if (QualitySettings.maximumLODLevel == 2) {
+			levelNumber = 2;
+			maxlevelNumber = 2;
+			QualitySettings.SetQualityLevel(0);
+		}
 		PlayerPrefs.SetInt ("levelNumber", levelNumber);
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 		PlayerPrefs.Save();
@@ -248,19 +250,12 @@ public class PlayerMovement : MonoBehaviour
 				if (setupbots.gameEnded == false)
 					countdown -= 1;
 				//we stop the clock when we win. Then the saved seconds can be applied to the score
-				countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+
+				if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
+				else countdownTextObj.text = string.Format ("{0:0.}s", countdown);
 			}
 		}
 		//the timer section: if we're timed play, we run the countdown timer
-
-		if (Physics.Raycast (playerPosition, Vector3.down, out hit) == false) {
-			playerPosition = new Vector3 (playerPosition.x, 99999f, playerPosition.z);
-			if (Physics.Raycast (playerPosition, Vector3.down, out hit)) {
-				playerPosition = hit.point + Vector3.up;
-				transform.position = playerPosition;
-			}
-		}
-		//insanity check to stop falling into infinity
 		
 		Vector2 input = Vector2.zero;
 		if (usingController == 0) input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
@@ -404,8 +399,6 @@ public class PlayerMovement : MonoBehaviour
 		//alternately, we have high drag if we're near a surface and little in the air
 
 		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-		if (rigidBody.velocity.magnitude > 10f) rigidBody.velocity.Normalize();
-		//apply the player move unless it's INSANE
 		stepsBetween = 0f;
 		//zero out the step-making part and start over
 		startPosition = Vector3.zero;
@@ -413,7 +406,30 @@ public class PlayerMovement : MonoBehaviour
 		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
 
 		velCompensated = blurFactor / (Mathf.Sqrt(rigidBody.velocity.magnitude) + 4f);
-		
+
+		if (Physics.Raycast (transform.position, Vector3.down, out hit) == false) {
+			playerPosition = transform.position;
+			playerPosition.y = 99999f;
+			if (Physics.Raycast (playerPosition, Vector3.down, out hit) == true) {
+				playerPosition = hit.point + Vector3.up;
+			} else {
+				playerPosition = new Vector3 (1614f, 9999f, 2083f);
+				//if all else fails, drop from the sky in the middle of the map
+			}
+			lastPlayerPosition = transform.position = playerPosition;
+		}
+		//insanity check to stop falling into infinity
+
+
+		if (Vector3.Distance (transform.position, lastPlayerPosition) > 4f) {
+			transform.position = lastPlayerPosition;
+			rigidBody.velocity = Vector3.zero;
+			endPosition = startPosition;
+		}
+ 		else lastPlayerPosition = transform.position;
+		//insanity check: if for any reason we've moved faster than 4 world units per tick, the dreaded geometry glitch has struck
+		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
+
 		StartCoroutine ("SlowUpdates");
 	}
 
@@ -426,6 +442,7 @@ public class PlayerMovement : MonoBehaviour
 				guardianmovement.locationTarget.x += 4000f;
 			}
 			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
+			playerPosition = lastPlayerPosition = transform.position;
 		}
 
 		if (Mathf.Abs (Input.GetAxis ("JoystickLookUpDown")) > 1f) usingController = 1;
@@ -440,14 +457,21 @@ public class PlayerMovement : MonoBehaviour
 		}
 		//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-		if (setupbots.gameEnded && Input.GetKey (KeyCode.Space)) {
-			//trigger new level load on completing of level
+		if (setupbots.gameEnded && (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk"))) {
+			//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
+			if (countdown < 0) countdown = (int)-(Mathf.Sqrt(-countdown));
+			//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
 			if (QualitySettings.maximumLODLevel == 0) levelNumber = levelNumber + countdown;
 			//if we're on timed play, we can advance very fast but also fall back.
 			if (QualitySettings.maximumLODLevel == 1) levelNumber = levelNumber + 1;
 			//if we're on untimed play, we advance one at a time, very gradually
 			if (levelNumber < 2) levelNumber = 2;
 			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
+			if (QualitySettings.maximumLODLevel == 2) {
+				levelNumber = 2;
+				maxlevelNumber = 2;
+				QualitySettings.SetQualityLevel(0);
+			}
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 			PlayerPrefs.Save();
@@ -472,7 +496,10 @@ public class PlayerMovement : MonoBehaviour
 
 		if ((fps > 20f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		} //generate a bot if we don't have 500 and our FPS is at least 20. Works for locked framerate too as that's bound to 60
+		if ((fps > 90f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 90. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 
 		yield return new WaitForSeconds(.016f);
@@ -483,6 +510,7 @@ public class PlayerMovement : MonoBehaviour
 				guardianmovement.locationTarget.z += 4000f;
 			}
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
+			playerPosition = lastPlayerPosition = transform.position;
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
@@ -494,15 +522,19 @@ public class PlayerMovement : MonoBehaviour
 				guardianmovement.locationTarget.x -= 4000f;
 			}
 			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
+			playerPosition = lastPlayerPosition = transform.position;
 		}
 		wireframeCamera.fieldOfView = baseFOV - 0.5f + (cameraZoom*0.5f);
 		float recip = 1.0f / backgroundSound.gain;
 		recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
 
-		if ((fps > 20f) && botNumber < totalBotNumber) {
+		if ((fps > 40f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		} //generate a bot if we don't have 500 and our FPS is at least 40. Works for locked framerate too as that's bound to 60
+		if ((fps > 120f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 120. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 
 		yield return new WaitForSeconds(.016f);
@@ -513,6 +545,7 @@ public class PlayerMovement : MonoBehaviour
 				guardianmovement.locationTarget.z -= 4000f;
 			}
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
+			playerPosition = lastPlayerPosition = transform.position;
 		}
 		///walls! We bounce off the four walls of the world rather than falling out of it
 		skyboxCamera.fieldOfView = baseFOV - 1f + cameraZoom;
@@ -541,10 +574,15 @@ public class PlayerMovement : MonoBehaviour
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
 
-		if ((fps > 20f) && botNumber < totalBotNumber) {
+		if ((fps > 60f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+		} //generate a bot if we don't have 500 and our FPS is at least 60. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
+		if ((fps > 180f) && botNumber < totalBotNumber) {
+			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
+		} //generate a bot if we don't have 500 and our FPS is at least 180. Works for locked framerate too as that's bound to 60
+		//uses totalBotNumber because if we start killing them, the top number goes down!
+		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
 		yield return new WaitForSeconds(.016f);
 
 	}

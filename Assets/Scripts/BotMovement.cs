@@ -28,7 +28,7 @@ public class BotMovement : MonoBehaviour
 	public Color32[] botBrain;
 	public int brainPointer = 0;
 	public int voicePointer = 0;
-	public int jumpCounter = 1;
+	public int jumpCounter;
 	private float altitude = 1f;
 	private float adjacentSolid = 99999;
 	private int brainR;
@@ -60,6 +60,7 @@ public class BotMovement : MonoBehaviour
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
 	private bool watchingForYou;
+	private float distance;
 	private float squish = 1f;
 	private float squishRecoil = 0f;
 	private float squosh = 1f;
@@ -336,8 +337,8 @@ public class BotMovement : MonoBehaviour
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.004)) {
 			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 100f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 200f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
 		//we're gonna try to identify when they're stuck on something and let them jump their way out of it
@@ -444,7 +445,7 @@ public class BotMovement : MonoBehaviour
 			if (Physics.Linecast (transform.position, botTarget, otherBots) && !setupbots.gameEnded) {
 				botZaps.transform.position = transform.position;
 				botZaps.transform.LookAt (botTarget);
-				botZapsParticles.startSize = 0.5f;
+				botZapsParticles.startSize = 0.4f;
 				botZapsParticles.Emit (1);
 				//and fires a particle if it's looking at another bot
 				//and then it beeps, either verbed or not
@@ -511,7 +512,7 @@ public class BotMovement : MonoBehaviour
 		if (transform.position.z > 4000f) {
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
 		}
-		float distance = Vector3.Distance (transform.position, ourhero.transform.position);
+		distance = Vector3.Distance (transform.position, ourhero.transform.position);
 
 		if (distance < 25) {
 			meshfilter.mesh = meshLOD0;
@@ -548,11 +549,11 @@ public class BotMovement : MonoBehaviour
 			if (distance < playermovement.activityRange) {
 				audioSource.Stop ();
 			}
-			if (distance > (playermovement.fps * 100)) {
+			if (distance > (playermovement.fps * playermovement.cullRange)) {
 				Destroy (this.transform.gameObject);
 				//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
 				//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 1000 away,
-				//at full 60fps vSync you have to be 6000 away to be culled. And of course unsynced rapidly makes them uncullable.
+				//at full 60fps vSync you have to be 600 away to be culled. And of course unsynced rapidly makes them uncullable.
 			}
 		}
 		yield return new WaitForSeconds (.01f);
