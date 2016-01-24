@@ -16,6 +16,7 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject ourlevel;
 	public static int levelNumber = 2;
 	public static int maxlevelNumber = 2;
+	public static int usingController = 0;
 	public static Vector3 playerPosition = new Vector3 (1644f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
@@ -110,6 +111,18 @@ public class PlayerMovement : MonoBehaviour
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
+		usingController = PlayerPrefs.GetInt ("usingController", 0);
+		if (QualitySettings.maximumLODLevel == 2) {
+			levelNumber = 2;
+			maxlevelNumber = 2;
+			QualitySettings.GetQualityLevel();
+			//with a bit of luck this can read what mode we WERE in
+			PlayerPrefs.SetInt ("levelNumber", levelNumber);
+			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+			PlayerPrefs.SetInt ("usingController", usingController);
+			PlayerPrefs.Save ();
+			//reset puts you back to timed play
+		}
 
 	}
 
@@ -143,10 +156,22 @@ public class PlayerMovement : MonoBehaviour
 		if (levelNumber < 180) countdown = 180; // 3 minutes
 		if (levelNumber < 120) countdown = 120; // 2 minutes
 		if (levelNumber < 60) countdown = 60;  // 1 minute
-		countdownTextObj.text = string.Format("{0:0.}s", countdown);
-		//set the timer to 
+		countdownTextObj.text = " ";
+		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 
 
+	}
+
+	void OnApplicationQuit () {
+		if ((QualitySettings.maximumLODLevel == 0) && (countdown < 0)) levelNumber = levelNumber + countdown;
+		if (levelNumber < 2) levelNumber = 2;
+		if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
+		PlayerPrefs.SetInt ("levelNumber", levelNumber);
+		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+		PlayerPrefs.Save();
+		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
+		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
+		//so that there's drama: whether you find the counterpart or not, going negative will cut back your score!
 	}
 
 	void Update ()
@@ -155,7 +180,7 @@ public class PlayerMovement : MonoBehaviour
 		cameraDolly.transform.localPosition = Vector3.Lerp(startPosition, endPosition, stepsBetween);
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
 
-		if (QualitySettings.maximumLODLevel == 0) {
+		if (usingController == 0) {
 			float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
 			mouseDrag = Mathf.Abs (tempMouse);
 			initialTurn = Mathf.Lerp(initialTurn, initialTurn - tempMouse, Mathf.Abs(Input.GetAxis ("MouseX")*0.1f));
@@ -216,13 +241,17 @@ public class PlayerMovement : MonoBehaviour
 		//to allow physics to run correctly.
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
-		countdownTicker -= 1;
-		if (countdownTicker < 1) {
-			countdownTicker = 30;
-			if (setupbots.gameEnded == false) countdown -= 1;
-			//we stop the clock when we win. Then the saved seconds can be applied to the score
-			countdownTextObj.text = string.Format("{0:0.}s", countdown);
+		if (QualitySettings.maximumLODLevel == 0) {
+			countdownTicker -= 1;
+			if (countdownTicker < 1) {
+				countdownTicker = 30;
+				if (setupbots.gameEnded == false)
+					countdown -= 1;
+				//we stop the clock when we win. Then the saved seconds can be applied to the score
+				countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+			}
 		}
+		//the timer section: if we're timed play, we run the countdown timer
 
 		if (Physics.Raycast (playerPosition, Vector3.down, out hit) == false) {
 			playerPosition = new Vector3 (playerPosition.x, 99999f, playerPosition.z);
@@ -232,11 +261,11 @@ public class PlayerMovement : MonoBehaviour
 			}
 		}
 		//insanity check to stop falling into infinity
-
+		
 		Vector2 input = Vector2.zero;
-		if (QualitySettings.maximumLODLevel == 0) input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
+		if (usingController == 0) input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
 		//keyboard input
-		if (QualitySettings.maximumLODLevel == 1) {
+		if (usingController == 1) {
 			float tempJoystick = Input.GetAxis ("JoystickLookLeftRight") / (Mathf.Abs (Input.GetAxis ("JoystickLookLeftRight")) + 8f);
 			initialTurn -= tempJoystick;
 			mouseDrag = Mathf.Abs (tempJoystick);
@@ -399,6 +428,11 @@ public class PlayerMovement : MonoBehaviour
 			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
 		}
 
+		if (Mathf.Abs (Input.GetAxis ("JoystickLookUpDown")) > 1f) usingController = 1;
+		if (Mathf.Abs (Input.GetAxis ("JoystickMoveForwardBack")) > 1f) usingController = 1;
+		if (Mathf.Abs (Input.GetAxis ("Horizontal")) > 1f) usingController = 0;
+		if (Mathf.Abs (Input.GetAxis ("Vertical")) > 1f) usingController = 0;
+		//trying to switch stuff based on what controller is in use. Mouse overrides if used
 
 		if (Cursor.lockState != CursorLockMode.Locked) {
 			Cursor.lockState = CursorLockMode.Locked;
@@ -408,7 +442,10 @@ public class PlayerMovement : MonoBehaviour
 
 		if (setupbots.gameEnded && Input.GetKey (KeyCode.Space)) {
 			//trigger new level load on completing of level
-			levelNumber = levelNumber + countdown;
+			if (QualitySettings.maximumLODLevel == 0) levelNumber = levelNumber + countdown;
+			//if we're on timed play, we can advance very fast but also fall back.
+			if (QualitySettings.maximumLODLevel == 1) levelNumber = levelNumber + 1;
+			//if we're on untimed play, we advance one at a time, very gradually
 			if (levelNumber < 2) levelNumber = 2;
 			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);

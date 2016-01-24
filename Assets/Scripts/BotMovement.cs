@@ -37,6 +37,7 @@ public class BotMovement : MonoBehaviour
 	public int step;
 	private SphereCollider sphereCollider;
 	private Rigidbody rigidBody;
+	private float prevVelocityY = 0f;
 	private GameObject dolly;
 	private Vector3 startPosition;
 	private Vector3 endPosition;
@@ -47,6 +48,7 @@ public class BotMovement : MonoBehaviour
 	private Renderer myColor;
 	private RaycastHit hit;
 	private GameObject ourhero;
+	private Rigidbody ourheroRigidbody;
 	private PlayerMovement playermovement;
 	private GuardianMovement guardianNmovement;
 	private GameObject level;
@@ -58,6 +60,9 @@ public class BotMovement : MonoBehaviour
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
 	private bool watchingForYou;
+	private float squish = 1f;
+	private float squishRecoil = 0f;
+	private float squosh = 1f;
 
 	void Awake ()
 	{
@@ -68,6 +73,7 @@ public class BotMovement : MonoBehaviour
 		myColor = dolly.GetComponent<Renderer> ();
 		audioSource = GetComponent<AudioSource> ();
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
+		ourheroRigidbody = ourhero.GetComponent<Rigidbody> ();
 		playermovement = ourhero.GetComponent<PlayerMovement> ();
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
@@ -109,7 +115,7 @@ public class BotMovement : MonoBehaviour
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 				audioSource.volume = 0.5f;
 				PlayerMovement.guardianHostility += 0.01f;
-				guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (ourhero.GetComponent<Rigidbody> ().velocity.magnitude * 0.025f));
+				guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (ourheroRigidbody.velocity.magnitude * 0.025f));
 				//lerp value, slowly diminishes. Multiple kills can make a guardian super aggressive. Or if you are super speeding
 				guardianNmovement.locationTarget = transform.position;
 				//whether or not we killed the other bot, we are going to trigger the guardian
@@ -128,8 +134,8 @@ public class BotMovement : MonoBehaviour
 						Destroy (this);
 						//REKKT. Bot's brain is destroyed and since it was your soulmate...
 						ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
-						ourhero.GetComponent<Rigidbody> ().freezeRotation = false;
-						ourhero.GetComponent<Rigidbody> ().angularDrag = 0.6f;
+						ourheroRigidbody.freezeRotation = false;
+						ourheroRigidbody.angularDrag = 0.6f;
 						setupbots.gameEnded = true;
 						setupbots.killed = true;
 						Destroy (playermovement);
@@ -159,7 +165,7 @@ public class BotMovement : MonoBehaviour
 				if (playermovement.yourMatch == yourMatch) {
 					rigidBody.velocity = Vector3.zero;
 					lerpedMove = Vector3.zero;
-					playermovement.gameObject.GetComponent<Rigidbody> ().velocity = Vector3.zero;
+					ourheroRigidbody.velocity = Vector3.zero;
 					//freeze, in shock and delight!
 
 					AudioSource externalSource = GameObject.FindGameObjectWithTag ("overheadLight").GetComponent<AudioSource> ();
@@ -199,6 +205,12 @@ public class BotMovement : MonoBehaviour
 			} //decide if it's a hit or a kiss
 			//with the player
 		} else {
+			if (col.gameObject.tag == "Terrain") {
+				squish = (1f / (Mathf.Abs((prevVelocityY-rigidBody.velocity.y)*0.02f)+1f)) - 1f;
+				squishRecoil = 0f;
+				//try to splat when landing on terrain
+			}
+
 			//bots hitting bots here
 			PlayerMovement.guardianHostility -= 0.01f;
 			if (PlayerMovement.guardianHostility < 0f) PlayerMovement.guardianHostility = 0f;
@@ -276,7 +288,7 @@ public class BotMovement : MonoBehaviour
 			}
 			//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 		}
-		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourhero.GetComponent<Rigidbody> ().velocity, Vector3.zero, 0.4f), (botBrain [voicePointer].g / 255f));
+		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.4f), (botBrain [voicePointer].g / 255f));
 		//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
 	}
 
@@ -288,6 +300,12 @@ public class BotMovement : MonoBehaviour
 
 	void FixedUpdate ()
 	{
+		squishRecoil -= (squish * 0.128f);
+		squish = (squish + squishRecoil) * 0.7f;
+
+		squosh = 1f - (squish * 0.6283f); //expand out to the sides
+		transform.localScale = new Vector3 (squosh, squish + 1f, squosh);
+
 		//FixedUpdate is run as many times as needed, before an Update step: or, it's skipped if framerate is super high.		
 		adjacentSolid = 99999;
 
@@ -360,9 +378,13 @@ public class BotMovement : MonoBehaviour
 		if (jumpCounter < 0) {
 			jumpCounter = (int)Math.Sqrt(brainB + brainG)+1;
 			//purely red bots are jumpier
-			rigidBody.AddForce (Vector3.up * playermovement.baseJump * playermovement.baseJump, ForceMode.Impulse);
+			rigidBody.AddForce (Vector3.up * 15f, ForceMode.Impulse);
+			squish = 0.3f;
+			squishRecoil = 0.3f;
 			//jump!
 		}
+
+		prevVelocityY = rigidBody.velocity.y;
 
 		if (botBrain.Length > 1)
 			StartCoroutine ("SlowUpdates");
@@ -458,7 +480,9 @@ public class BotMovement : MonoBehaviour
 				}
 			}
 			rigidBody.angularVelocity = Vector3.zero;
-			transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, brainG - 127f, brainB - 127f));
+			if (Mathf.Abs(squish) < 0.01f) transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, brainG - 127f, brainB - 127f));
+			else transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, 0f, brainB - 127f));
+			//rotate only, but stay vertical for the bounce animations. Do full pivothead thing when not bouncing or landing
 			Color c = new Color (brainR, brainG, brainB);
 			SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 			//this is giving us 360 degree hue, and then saturation and luminance.
