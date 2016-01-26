@@ -16,6 +16,7 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject ourlevel;
 	public static int levelNumber = 2;
 	public static int maxlevelNumber = 2;
+	public static int awesomeFactor = 1;
 	public static int usingController = 0;
 	public static Vector3 playerPosition = new Vector3 (1644f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
@@ -30,10 +31,12 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject botsText;
 	public GameObject maxbotsText;
 	public GameObject countdownText;
+	public GameObject awesomeText;
 	public Text fpsTextObj;
 	public Text botsTextObj;
 	public Text maxbotsTextObj;
 	public Text countdownTextObj;
+	public Text awesomeTextObj;
 	private int countdown;
 	private int countdownTicker = 30;
 	//we're running the physics engine at 30 fps
@@ -113,6 +116,7 @@ public class PlayerMovement : MonoBehaviour
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
+		awesomeFactor = PlayerPrefs.GetInt ("awesomeFactor", 1);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
@@ -121,6 +125,7 @@ public class PlayerMovement : MonoBehaviour
 			//with a bit of luck this can read what mode we WERE in
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+			PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
 			PlayerPrefs.SetInt ("usingController", usingController);
 			PlayerPrefs.Save ();
 			//reset puts you back to timed play
@@ -143,6 +148,7 @@ public class PlayerMovement : MonoBehaviour
 		botsTextObj = botsText.GetComponent<Text> ();
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
+		awesomeTextObj = awesomeText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
 		creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
 		//somewhat randomized but still in the area of what's set
@@ -153,6 +159,7 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj.text = string.Format("score:{0:0.}", maxlevelNumber);
 		countdown = 60 + (int)(Math.Sqrt(levelNumber)*10f); // scales to size but gets very hard to push
 		countdownTextObj.text = " ";
+		awesomeTextObj.text = string.Format ("humanmachinemeld awesomeness factor {0:0.}k", awesomeFactor); 
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 	}
 
@@ -166,10 +173,12 @@ public class PlayerMovement : MonoBehaviour
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
+			awesomeFactor = 1;
 			QualitySettings.SetQualityLevel(0);
 		}
 		PlayerPrefs.SetInt ("levelNumber", levelNumber);
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+		PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
 		PlayerPrefs.Save();
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
@@ -253,6 +262,8 @@ public class PlayerMovement : MonoBehaviour
 
 				if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
 				else countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+				if ((botNumber * (int)fps) / 1000 > awesomeFactor) awesomeFactor = (botNumber * (int)fps) / 1000;
+				awesomeTextObj.text = string.Format ("humanmachinemeld awesomeness factor {0:0.}k", awesomeFactor); 
 			}
 		}
 		//the timer section: if we're timed play, we run the countdown timer
@@ -470,10 +481,12 @@ public class PlayerMovement : MonoBehaviour
 			if (QualitySettings.maximumLODLevel == 2) {
 				levelNumber = 2;
 				maxlevelNumber = 2;
+				awesomeFactor = 1;
 				QualitySettings.SetQualityLevel(0);
 			}
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+			PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
