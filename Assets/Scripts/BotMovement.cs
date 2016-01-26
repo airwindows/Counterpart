@@ -100,9 +100,10 @@ public class BotMovement : MonoBehaviour
 		jumpCounter -= 1;
 		//no matter what, if we collide we trigger the jump counter
 		if (col.gameObject.tag == "Player" && notEnded) {
-
 			if (col.relativeVelocity.magnitude > 30f) {
 				playermovement.timeBetweenGuardians = 1f;
+				playermovement.dollyOffset = col.relativeVelocity.magnitude/200f;
+				//hitting a bot knocks your viewpoint
 				//you bonked a bot so the guardian will get between you
 				watchingForYou = false;
 				overThere = Vector3.zero;
@@ -154,10 +155,8 @@ public class BotMovement : MonoBehaviour
 						rigidBody.angularDrag = 0.5f;
 						Destroy (this);
 						//REKKT. Bot's brain is destroyed, after setting its color to dim.
-						playermovement.baseJump = playermovement.baseJump * 0.98f;
 						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
 						PlayerMovement.guardianHostility += 0.1f;
-						//if you go around killing bots you lose your jump.
 					}//when over 40, decide if you kill entire game or just the other bot.
 				}//also over 25
 				audioSource.Play ();
@@ -180,6 +179,7 @@ public class BotMovement : MonoBehaviour
 					//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
 					externalSource.PlayOneShot (happyEnding, 1f);
 					logo.GetComponent<Text> ().text = "Success!";
+					playermovement.dollyOffset = 3.0f;
 					notEnded = false;
 					//with that, we switch off the bot this is
 					setupbots.gameEnded = true;
@@ -337,13 +337,11 @@ public class BotMovement : MonoBehaviour
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.004)) {
 			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 200f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
 		//we're gonna try to identify when they're stuck on something and let them jump their way out of it
-		
-
 
 		if (adjacentSolid < 1f)
 			adjacentSolid = 1f;
@@ -367,14 +365,6 @@ public class BotMovement : MonoBehaviour
 		startPosition = Vector3.zero;
 		endPosition = rigidBody.velocity * Time.fixedDeltaTime;
 		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
-
-		if (rigidBody.velocity.magnitude < 0.5f)
-			playermovement.creepRotAngle += 0.0004f;
-		if (playermovement.creepRotAngle > 360f)
-			playermovement.creepRotAngle -= 360f;
-		//this is an interesting one. The overall whirl of the bots depends on how many of them feel stuck.
-		//If most of them can move freely, it stays static. If lots are stuck, then the whole thing might reverse itself rather quick,
-		//then stop once they're freed up. Statistical density FTW!
 
 		if (jumpCounter < 0) {
 			jumpCounter = (int)Math.Sqrt(brainB + brainG)+1;

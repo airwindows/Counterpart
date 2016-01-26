@@ -13,6 +13,11 @@ public class SetUpBots : MonoBehaviour {
 	public bool killed = true;
 	public int yourMatch;
 	private float distance;
+	private float spacing;
+	private float degrees;
+	private Vector3 spawnLocationA;
+	private Vector3 spawnLocationB;
+	private Vector3 spawnLocationC;
 
 
 	//Texture array must be set up in the editor as LoadAll no worky
@@ -52,6 +57,10 @@ public class SetUpBots : MonoBehaviour {
 		yourMatch = Random.Range(0, randBots);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
+		Renderer ourbody = ourhero.transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
+		Texture2D ourTexture = botTexture [yourMatch];
+		ourbody.material.mainTexture = ourTexture;
+		ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);
 		//we have now established that you are a particular bot
 
 		SpawnBot (yourMatch, true);
@@ -96,23 +105,30 @@ public class SetUpBots : MonoBehaviour {
 		//and the bots must know what number they are, because you'll match with them
 
 		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
-		float spacing = Random.Range (1f, playermovement.creepToRange);
-		float degrees = Random.Range (0f, 360f);
 
+		spacing = Random.Range (1f, playermovement.creepToRange);
+		degrees = Random.Range (0f, 360f);
+		spawnLocationA = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+		spacing = Random.Range (1f, playermovement.creepToRange);
+		degrees = Random.Range (0f, 360f);
+		spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+		spacing = Random.Range (1f, playermovement.creepToRange);
+		degrees = Random.Range (0f, 360f);
+		spawnLocationC = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
 
-		//Vector3 spawnLocation = new Vector3 (Random.Range(1, 3999), 99999f, Random.Range(1, 3999));
-		Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
+	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
 
-		if (Physics.Raycast (spawnLocation, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
-			spawnLocation = hit.point + Vector3.up;
+		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
+			spawnLocationA = hit.point + Vector3.up;
 		}
 		else {
 			if (index != yourMatch) Destroy (myBot.transform.gameObject);
-			else spawnLocation = hit.point + Vector3.up;
+			else spawnLocationA = hit.point + Vector3.up;
 		}
 		//if we're not actually on the terrain, nope on this bot position
 
-		myBot.transform.position = spawnLocation;
+		myBot.transform.position = spawnLocationA;
 
 		distance = Vector3.Distance (myBot.transform.position, ourhero.transform.position);
 		if (distance > (playermovement.fps * playermovement.cullRange) && (index != yourMatch)) {
@@ -124,7 +140,7 @@ public class SetUpBots : MonoBehaviour {
 			//Also, we must explicitly check that it's not the counterpart, destroying that breaks the game
 		}
 
-		botmovement.botTarget = spawnLocation;
+		botmovement.botTarget = spawnLocationA;
 		botmovement.step = step;
 		botmovement.brainPointer = Random.Range(0, botmovement.botBrain.Length);
 		botmovement.jumpCounter = botmovement.brainPointer;

@@ -16,7 +16,7 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject ourlevel;
 	public static int levelNumber = 2;
 	public static int maxlevelNumber = 2;
-	public static int awesomeFactor = 1;
+	public static int playerScore = 0;
 	public static int usingController = 0;
 	public static Vector3 playerPosition = new Vector3 (1644f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
@@ -31,12 +31,10 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject botsText;
 	public GameObject maxbotsText;
 	public GameObject countdownText;
-	public GameObject awesomeText;
 	public Text fpsTextObj;
 	public Text botsTextObj;
 	public Text maxbotsTextObj;
 	public Text countdownTextObj;
-	public Text awesomeTextObj;
 	private int countdown;
 	private int countdownTicker = 30;
 	//we're running the physics engine at 30 fps
@@ -79,7 +77,7 @@ public class PlayerMovement : MonoBehaviour
 	public Vector3 desiredAimOffsetPosition;
 	public float fps = 60f;
 	private float prevFps = 60f;
-	public float cullRange = 20f;
+	public float cullRange = 60f;
 	public int botNumber;
 	private int prevBotNumber = -1;
 	public int totalBotNumber;
@@ -92,6 +90,7 @@ public class PlayerMovement : MonoBehaviour
 	public Vector3 locationOfCounterpart;
 	private RaycastHit hit;
 	private float cameraZoom = 0f;
+	public float dollyOffset;
 	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
 	public float creepRotAngle = 1f;
@@ -116,19 +115,21 @@ public class PlayerMovement : MonoBehaviour
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
-		awesomeFactor = PlayerPrefs.GetInt ("awesomeFactor", 1);
+		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
-			QualitySettings.GetQualityLevel();
-			//with a bit of luck this can read what mode we WERE in
+			playerScore = 0;
+			QualitySettings.SetQualityLevel(0);
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-			PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
 			PlayerPrefs.SetInt ("usingController", usingController);
+			PlayerPrefs.SetInt ("playerScore", playerScore);
 			PlayerPrefs.Save ();
 			//reset puts you back to timed play
+			Application.LoadLevel("Scene");
+			//immediately reload. Only works if we set quality level away from what invokes this
 		}
 
 	}
@@ -144,11 +145,11 @@ public class PlayerMovement : MonoBehaviour
 		blurHack = 0;
 		botNumber = levelNumber;
 		totalBotNumber = levelNumber;
+		dollyOffset = 16f / levelNumber;
 		fpsTextObj = fpsText.GetComponent<Text> ();
 		botsTextObj = botsText.GetComponent<Text> ();
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
-		awesomeTextObj = awesomeText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
 		creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
 		//somewhat randomized but still in the area of what's set
@@ -156,10 +157,9 @@ public class PlayerMovement : MonoBehaviour
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		maxbotsTextObj.text = string.Format("score:{0:0.}", maxlevelNumber);
-		countdown = 60 + (int)(Math.Sqrt(levelNumber)*10f); // scales to size but gets very hard to push
+		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
+		countdown = 40 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
-		awesomeTextObj.text = string.Format ("humanmachinemeld awesomeness factor {0:0.}k", awesomeFactor); 
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 	}
 
@@ -170,15 +170,9 @@ public class PlayerMovement : MonoBehaviour
 		//so it becomes a drama of, quit and take your losses? Or keep trying to find the counterpart at a reduced time cost?
 		if (levelNumber < 2) levelNumber = 2;
 		if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
-		if (QualitySettings.maximumLODLevel == 2) {
-			levelNumber = 2;
-			maxlevelNumber = 2;
-			awesomeFactor = 1;
-			QualitySettings.SetQualityLevel(0);
-		}
 		PlayerPrefs.SetInt ("levelNumber", levelNumber);
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-		PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
+		PlayerPrefs.SetInt ("playerScore", playerScore);
 		PlayerPrefs.Save();
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
@@ -188,7 +182,7 @@ public class PlayerMovement : MonoBehaviour
 	void Update ()
 	{
 		//Each frame we run Update, regardless of what game control/physics is doing. This is the fundamental 'tick' of the game but it's wildly time-variant: it goes as fast as possible.
-		cameraDolly.transform.localPosition = Vector3.Lerp(startPosition, endPosition, stepsBetween);
+		cameraDolly.transform.localPosition = Vector3.Lerp(startPosition, endPosition, stepsBetween) + (Vector3.up * dollyOffset);
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
 
 		if (usingController == 0) {
@@ -252,6 +246,9 @@ public class PlayerMovement : MonoBehaviour
 		//to allow physics to run correctly.
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
+		dollyOffset -= 0.1f;
+		if (dollyOffset < 0f) dollyOffset = 0f;
+
 		if (QualitySettings.maximumLODLevel == 0) {
 			countdownTicker -= 1;
 			if (countdownTicker < 1) {
@@ -262,8 +259,6 @@ public class PlayerMovement : MonoBehaviour
 
 				if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
 				else countdownTextObj.text = string.Format ("{0:0.}s", countdown);
-				if ((botNumber * (int)fps) / 1000 > awesomeFactor) awesomeFactor = (botNumber * (int)fps) / 1000;
-				awesomeTextObj.text = string.Format ("humanmachinemeld awesomeness factor {0:0.}k", awesomeFactor); 
 			}
 		}
 		//the timer section: if we're timed play, we run the countdown timer
@@ -478,19 +473,17 @@ public class PlayerMovement : MonoBehaviour
 			//if we're on untimed play, we advance one at a time, very gradually
 			if (levelNumber < 2) levelNumber = 2;
 			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
-			if (QualitySettings.maximumLODLevel == 2) {
-				levelNumber = 2;
-				maxlevelNumber = 2;
-				awesomeFactor = 1;
-				QualitySettings.SetQualityLevel(0);
-			}
+			if (levelNumber > playerScore) playerScore = levelNumber;
+			//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
+			//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
+			//but we can at least get some score benefit from that. Score should not go backwards.
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-			PlayerPrefs.SetInt ("awesomeFactor", awesomeFactor);
+			PlayerPrefs.SetInt ("playerScore", playerScore);
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
-		//save prefs to disk so we remember. Currently on pageup
+		//save prefs to disk so we remember.
 
 		timeBetweenGuardians *= 0.9995f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
@@ -582,7 +575,8 @@ public class PlayerMovement : MonoBehaviour
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 		
-		creepToRange -= 0.015f;
+		creepToRange -= (0.01f + (0.0001f * levelNumber));
+		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 		if (creepToRange < 1f) creepToRange =  (float)Mathf.Min (1800, levelNumber * 2);
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 		//More interesting than the following the player distance.
