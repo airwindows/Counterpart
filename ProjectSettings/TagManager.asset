@@ -17,6 +17,7 @@ TagManager:
   - counterpartlogo
   - overheadLight
   - Line
+  - bottombar
   layers:
   - Default
   - TransparentFX

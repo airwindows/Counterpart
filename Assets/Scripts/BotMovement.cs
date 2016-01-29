@@ -275,15 +275,19 @@ public class BotMovement : MonoBehaviour
 			float voicePitch = 2.9f - ((center + left + right) * 0.003f);
 			if (voicePitch > 0f)
 				audioSource.pitch = voicePitch;
+			if (playermovement.yourMatch == yourMatch) {
+				audioSource.pitch = 3f;
+				audioSource.volume = 2.5f;
+				//extra emphasis for the counterpart
+			}
 			audioSource.Play ();
 
 			if (Vector3.Distance (transform.position, ourhero.transform.position) < 200f) watchingForYou = true;
 			//if we're near enough that the bot knows you're the one asking, then it will watch for your counterpart
 
-			if ((watchingForYou == true) && (overThere != Vector3.zero)) {
+			if ((watchingForYou == true) && (overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch)) {
 				botZaps.transform.position = transform.position;
 				botZaps.transform.LookAt (overThere);
-				if (playermovement.yourMatch == yourMatch) botZaps.transform.LookAt (botZaps.transform.position + Vector3.up);
 				botZapsParticles.startSize = 3f;
 				botZapsParticles.Emit(1);
 			}

@@ -106,41 +106,32 @@ public class SetUpBots : MonoBehaviour {
 
 		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
 
-		spacing = Random.Range (1f, playermovement.creepToRange);
+		spacing = Random.Range (playermovement.creepToRange / 8f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationA = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (1f, playermovement.creepToRange);
+		spacing = Random.Range (playermovement.creepToRange / 4f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (1f, playermovement.creepToRange);
+		spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationC = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+		//three different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
+		//can still turn up very local to the player
 
 		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
 	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
 
 		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
 			spawnLocationA = hit.point + Vector3.up;
+			//if there's a terrain and we're not too far, spawn bot
 		}
 		else {
 			if (index != yourMatch) Destroy (myBot.transform.gameObject);
 			else spawnLocationA = hit.point + Vector3.up;
+			//exception: if it's the counterpart, spawn anyway, it won't be culled
 		}
-		//if we're not actually on the terrain, nope on this bot position
-
 		myBot.transform.position = spawnLocationA;
-
-		distance = Vector3.Distance (myBot.transform.position, ourhero.transform.position);
-		if (distance > (playermovement.fps * playermovement.cullRange) && (index != yourMatch)) {
-			Destroy (myBot.transform.gameObject);
-			//if we are out of range AND the framerate's an issue AND we are not the lucky bot (this area is only for the disposables)
-			//then mark this whole bot for destruction! This can rein in some frame rate chugs. At 10 fps it's killing bots as close as 100 away,
-			//at full 60fps vSync you have to be 600 away to be culled. And of course unsynced rapidly makes them uncullable.
-			//since this is in the spawner, it'd be nice if we could just not create it but to get the location we need to access the brain.
-			//Also, we must explicitly check that it's not the counterpart, destroying that breaks the game
-		}
-
-		botmovement.botTarget = spawnLocationA;
+		botmovement.botTarget = spawnLocationC;
 		botmovement.step = step;
 		botmovement.brainPointer = Random.Range(0, botmovement.botBrain.Length);
 		botmovement.jumpCounter = botmovement.brainPointer;
@@ -203,10 +194,6 @@ public class SetUpBots : MonoBehaviour {
 			
 			float m1, m2;
 			
-			//	Note: there is a typo in the 2nd International Edition of Foley and
-			//	van Dam's "Computer Graphics: Principles and Practice", section 13.3.5
-			//	(The HLS Color Model). This incorrectly replaces the 1f in the following
-			//	line with "l", giving confusing results.
 			m2 = (l <= .5f) ? (l * (1f + s)) : (l + s - l * s);
 			m1 = 2f * l - m2;
 			

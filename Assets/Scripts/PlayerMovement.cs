@@ -18,7 +18,7 @@ public class PlayerMovement : MonoBehaviour
 	public static int maxlevelNumber = 2;
 	public static int playerScore = 0;
 	public static int usingController = 0;
-	public static Vector3 playerPosition = new Vector3 (1644f, 2000f, 2083f);
+	public static Vector3 playerPosition = new Vector3 (1610f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
 	public static float initialUpDown = 0f;
@@ -26,7 +26,6 @@ public class PlayerMovement : MonoBehaviour
 	public Camera mainCamera;
 	public Camera wireframeCamera;
 	public Camera skyboxCamera;
-	public Light headlight;
 	public GameObject fpsText;
 	public GameObject botsText;
 	public GameObject maxbotsText;
@@ -94,7 +93,7 @@ public class PlayerMovement : MonoBehaviour
 	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
 	public float creepRotAngle = 1f;
-	private float blurFactor = 0.001f;
+	private float blurFactor = 0.000975f;
 	private float velCompensated = 0.00001f;
 	private GameObject level;
 	private SetUpBots setupbots;
@@ -113,10 +112,13 @@ public class PlayerMovement : MonoBehaviour
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
-		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
-		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
-		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
-		usingController = PlayerPrefs.GetInt ("usingController", 0);
+
+//		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
+//		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
+//		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
+//		usingController = PlayerPrefs.GetInt ("usingController", 0);
+		//loading saved data from savegame: commented out in demo
+
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
@@ -158,7 +160,7 @@ public class PlayerMovement : MonoBehaviour
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
-		countdown = 40 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdown = 30 + (int)(Math.Sqrt(levelNumber)*3f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 	}
@@ -205,8 +207,12 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-			if (blurHack == 0) blurHackQuaternion.y = -velCompensated;
-			if (blurHack == 1) blurHackQuaternion.y = velCompensated;
+			if (blurHack == 0) {blurHackQuaternion.y = velCompensated;blurHackQuaternion.x = velCompensated;}
+			if (blurHack == 1) {blurHackQuaternion.y = -velCompensated;blurHackQuaternion.x = -velCompensated;}
+
+
+//			if (blurHack == 2) blurHackQuaternion.y = velCompensated;
+//			if (blurHack == 3) blurHackQuaternion.x = velCompensated;
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
 		}
 
@@ -295,6 +301,34 @@ public class PlayerMovement : MonoBehaviour
 
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
+
+
+
+
+
+
+
+
+
+
+
+		if (Input.GetKey (KeyCode.Minus)) {
+			levelNumber += 100;
+			playerScore = maxlevelNumber = levelNumber;
+			Application.LoadLevel("Scene");
+		}
+
+		if (Input.GetKey (KeyCode.Equals))
+			creepToRange = 20f;
+		//cheatcodes for videomaking
+
+
+
+
+
+
+
+
 
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
@@ -436,6 +470,10 @@ public class PlayerMovement : MonoBehaviour
 		//insanity check: if for any reason we've moved faster than 4 world units per tick, the dreaded geometry glitch has struck
 		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
 
+
+
+
+
 		StartCoroutine ("SlowUpdates");
 	}
 
@@ -490,8 +528,7 @@ public class PlayerMovement : MonoBehaviour
 
 
 		cameraZoom = Mathf.Sqrt (rigidBody.velocity.magnitude + 1f);
-		headlight.spotAngle = (baseFOV*1.5f) + cameraZoom;
-		//control the headlight to give the impression of tunnel vision at speed
+
 		if (altitude < 1f) {
 			backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
 			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000008f);
@@ -575,11 +612,14 @@ public class PlayerMovement : MonoBehaviour
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 		
-		creepToRange -= (0.01f + (0.0001f * levelNumber));
+		creepToRange -= (0.01f + (0.00001f * levelNumber));
 		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
-		if (creepToRange < 1f) creepToRange =  (float)Mathf.Min (1800, levelNumber * 2);
+		if (creepToRange < 1f) {
+			creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
+			creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+			//each time, the whole rotation of the 'bot map' is different.
+		}
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
-		//More interesting than the following the player distance.
 
 		if ((fps > 60f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);

@@ -8,7 +8,7 @@ AudioManager:
   Doppler Factor: 1
   Default Speaker Mode: 2
   m_SampleRate: 44100
-  m_DSPBufferSize: 0
-  m_VirtualVoiceCount: 1500
+  m_DSPBufferSize: 1024
+  m_VirtualVoiceCount: 1200
   m_RealVoiceCount: 24
   m_DisableAudio: 0
