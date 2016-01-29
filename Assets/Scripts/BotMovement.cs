@@ -93,6 +93,11 @@ public class BotMovement : MonoBehaviour
 		notEnded = true;
 		watchingForYou = false;
 		overThere = Vector3.zero;
+		if (yourMatch == playermovement.yourMatch)
+			audioSource.priority = 2;
+		else
+			audioSource.priority = 200;
+		//the counterpart is important, but the others less so
 	}
 
 	void OnCollisionEnter (Collision col)
@@ -540,7 +545,9 @@ public class BotMovement : MonoBehaviour
 			//by doing this, we can see whether there's anything in the way of the ray between match and player
 			//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.
 		} else {
-			if (distance < playermovement.activityRange) {
+			//not the counterpart
+			audioSource.priority = Mathf.Clamp((int)distance,3,254);
+			if (distance > playermovement.activityRange) {
 				audioSource.Stop ();
 			}
 			if (distance > (playermovement.fps * playermovement.cullRange)) {

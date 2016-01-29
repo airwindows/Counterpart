@@ -105,6 +105,8 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody = GetComponent<Rigidbody> ();
 		sphereCollider = GetComponent<SphereCollider> ();
 		audiosource = GetComponent<AudioSource> ();
+		audiosource.priority = 1;
+		//stuff bolted onto the player is always most important
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
@@ -113,10 +115,10 @@ public class PlayerMovement : MonoBehaviour
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 
-//		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
-//		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
-//		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
-//		usingController = PlayerPrefs.GetInt ("usingController", 0);
+		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
+		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
+		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
+		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		//loading saved data from savegame: commented out in demo
 
 		if (QualitySettings.maximumLODLevel == 2) {
@@ -207,12 +209,8 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-			if (blurHack == 0) {blurHackQuaternion.y = velCompensated;blurHackQuaternion.x = velCompensated;}
-			if (blurHack == 1) {blurHackQuaternion.y = -velCompensated;blurHackQuaternion.x = -velCompensated;}
-
-
-//			if (blurHack == 2) blurHackQuaternion.y = velCompensated;
-//			if (blurHack == 3) blurHackQuaternion.x = velCompensated;
+			if (blurHack == 0) {blurHackQuaternion.y = velCompensated; blurHackQuaternion.x = velCompensated;}
+			if (blurHack == 1) {blurHackQuaternion.y = -velCompensated; blurHackQuaternion.x = -velCompensated;}
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
 		}
 
@@ -301,34 +299,6 @@ public class PlayerMovement : MonoBehaviour
 
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
-
-
-
-
-
-
-
-
-
-
-
-		if (Input.GetKey (KeyCode.Minus)) {
-			levelNumber += 100;
-			playerScore = maxlevelNumber = levelNumber;
-			Application.LoadLevel("Scene");
-		}
-
-		if (Input.GetKey (KeyCode.Equals))
-			creepToRange = 20f;
-		//cheatcodes for videomaking
-
-
-
-
-
-
-
-
 
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {

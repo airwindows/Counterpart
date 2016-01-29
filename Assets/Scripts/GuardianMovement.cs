@@ -36,6 +36,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianSurface = transform.Find ("Surface Sphere").GetComponent<Renderer> ().material;
 		earthquakeLight = GameObject.FindGameObjectWithTag ("overheadLight");
 		externalSource = earthquakeLight.GetComponent<AudioSource> ();
+		//the guardian's one of the more important sounds
 		locationTarget = Vector3.zero;
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
@@ -55,6 +56,7 @@ public class GuardianMovement : MonoBehaviour {
 				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
 				externalSource.pitch = 0.34f - (crashScale * 0.0033f);
 				externalSource.volume = 6f / crashScale;
+				externalSource.priority = 3;
 				externalSource.Play ();
 			}
 			if (col.gameObject.tag == "Player") {
@@ -118,6 +120,7 @@ public class GuardianMovement : MonoBehaviour {
 
 		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
 		audiosource.pitch = pitch;
+		audiosource.priority = 4;
 		audiosource.volume = Mathf.Lerp(audiosource.volume, 0.3f + guardianCooldown, 0.001f + (guardianCooldown * 0.1f));
 		//ramp up fast but switch off more slowly.
 		if (Physics.Linecast (transform.position, ourhero.transform.position)) audiosource.volume = 0.2f + (guardianCooldown);
