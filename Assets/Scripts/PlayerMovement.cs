@@ -26,6 +26,8 @@ public class PlayerMovement : MonoBehaviour
 	public Camera mainCamera;
 	public Camera wireframeCamera;
 	public Camera skyboxCamera;
+	public Material overlayBoxMat;
+	public Material overlayBoxMat2;
 	public GameObject fpsText;
 	public GameObject botsText;
 	public GameObject maxbotsText;
@@ -81,7 +83,6 @@ public class PlayerMovement : MonoBehaviour
 	private int prevBotNumber = -1;
 	public int totalBotNumber;
 	private int blurHack;
-	//private int particleFlip = 0;
 	private Quaternion blurHackQuaternion;
 	private GameObject allbots;
 	private GameObject guardian;
@@ -93,6 +94,8 @@ public class PlayerMovement : MonoBehaviour
 	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
 	public float creepRotAngle = 1f;
+	public float skyboxRot = 0f;
+	public float skyboxRot2 = 0f;
 	private float blurFactor = 0.000975f;
 	private float velCompensated = 0.00001f;
 	private GameObject level;
@@ -252,7 +255,7 @@ public class PlayerMovement : MonoBehaviour
 		playerRotation = transform.rotation;
 		dollyOffset -= 0.1f;
 		if (dollyOffset < 0f) dollyOffset = 0f;
-
+		
 		if (QualitySettings.maximumLODLevel == 0) {
 			countdownTicker -= 1;
 			if (countdownTicker < 1) {
@@ -398,7 +401,7 @@ public class PlayerMovement : MonoBehaviour
 			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+4f+mouseDrag) * 0.18f;
+		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+4f+mouseDrag) * 0.1f;
 		//5 controls the top speed, 0.2 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
@@ -497,7 +500,7 @@ public class PlayerMovement : MonoBehaviour
 		//with this factor we scale how sensitive guardians are to bots bumping each other
 
 
-		cameraZoom = Mathf.Sqrt (rigidBody.velocity.magnitude + 1f);
+		cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
 
 		if (altitude < 1f) {
 			backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
@@ -525,7 +528,7 @@ public class PlayerMovement : MonoBehaviour
 			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
 			playerPosition = lastPlayerPosition = transform.position;
 		}
-		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.5f);
+		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.3f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 		yield return new WaitForSeconds(.016f);
 
@@ -537,7 +540,7 @@ public class PlayerMovement : MonoBehaviour
 			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 			playerPosition = lastPlayerPosition = transform.position;
 		}
-		wireframeCamera.fieldOfView = baseFOV - 0.5f + (cameraZoom*0.5f);
+		wireframeCamera.fieldOfView = baseFOV + (cameraZoom*0.4f);
 		float recip = 1.0f / backgroundSound.gain;
 		recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
@@ -561,7 +564,16 @@ public class PlayerMovement : MonoBehaviour
 			playerPosition = lastPlayerPosition = transform.position;
 		}
 		///walls! We bounce off the four walls of the world rather than falling out of it
-		skyboxCamera.fieldOfView = baseFOV - 1f + cameraZoom;
+
+		skyboxRot -= 0.08f;
+		if (skyboxRot < 0f) skyboxRot += 360f;
+		overlayBoxMat.SetFloat ("_Rotation", skyboxRot);
+		skyboxRot2 += 0.06f;
+		if (skyboxRot > 360f) skyboxRot -= 360f;
+		overlayBoxMat2.SetFloat ("_Rotation", skyboxRot2);
+		//try to rotate the skybox
+		skyboxCamera.fieldOfView = baseFOV + 10f + cameraZoom;
+
 		backgroundSound.gain = 1.0f / recip;
 
 		deltaTime += (Time.deltaTime - deltaTime) * 0.1f;
