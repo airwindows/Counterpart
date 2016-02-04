@@ -52,10 +52,10 @@ public class GuardianMovement : MonoBehaviour {
 			//we aren't messing with it. Hopefully this can give a unbreaking end music play
 		} else {
 			if (!externalSource.isPlaying) {
-				externalSource.reverbZoneMix = crashScale * 0.0002f;
+				externalSource.reverbZoneMix = crashScale * 0.00022f;
 				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
 				externalSource.pitch = 0.34f - (crashScale * 0.0033f);
-				externalSource.volume = 6f / crashScale;
+				externalSource.volume = 8f / crashScale;
 				externalSource.priority = 3;
 				externalSource.Play ();
 			}
@@ -100,20 +100,21 @@ public class GuardianMovement : MonoBehaviour {
 
 	IEnumerator SlowUpdates () {
 		locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, PlayerMovement.guardianHostility);
+		if (guardianCooldown > 1) guardianCooldown = Mathf.Lerp (guardianCooldown, Mathf.Sqrt (guardianCooldown), 0.01f);
 		//this ought to make it go for the player pretty hard if they kill bots.
 		//otherwise, it just goes to the source of the altercation which might include you.
 		yield return new WaitForSeconds (0.01f);
 
 		Vector3 rawMove = locationTarget - transform.position;
-		rawMove = rawMove.normalized * 180f * ((guardianCooldown > 1) ? 1f: guardianCooldown);
+		rawMove = rawMove.normalized * 200f * guardianCooldown;
 		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= (0.001f / myRigidbody.velocity.magnitude);
+		guardianCooldown -= (0.05f / myRigidbody.velocity.magnitude);
 		//rapidly cool off if it's holding position over a bot, not so much when chasing
 		if (guardianCooldown < 0f) {
 			guardianCooldown = 0f;
 			locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
 			rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 40f;
+			rawMove = rawMove.normalized * 100f;
 			myRigidbody.AddForce (rawMove);
 		}
 		yield return new WaitForSeconds (0.01f);

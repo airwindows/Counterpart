@@ -14,15 +14,15 @@ using UnityEngine.UI;
 public class PlayerMovement : MonoBehaviour
 {
 	public GameObject ourlevel;
-	public static int levelNumber = 2;
-	public static int maxlevelNumber = 2;
-	public static int playerScore = 0;
-	public static int usingController = 0;
+	public static int levelNumber;
+	public static int maxlevelNumber;
+	public static int playerScore;
+	public static int usingController;
+	public static float guardianHostility;
 	public static Vector3 playerPosition = new Vector3 (1610f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
 	public static float initialUpDown = 0f;
-	public static float guardianHostility = 0f;
 	public Camera mainCamera;
 	public Camera wireframeCamera;
 	public Camera skyboxCamera;
@@ -122,17 +122,20 @@ public class PlayerMovement : MonoBehaviour
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
+		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0);
 		//loading saved data from savegame: commented out in demo
 
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
 			playerScore = 0;
+			guardianHostility = 0f;
 			QualitySettings.SetQualityLevel(0);
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 			PlayerPrefs.SetInt ("usingController", usingController);
 			PlayerPrefs.SetInt ("playerScore", playerScore);
+			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
 			PlayerPrefs.Save ();
 			//reset puts you back to timed play
 			Application.LoadLevel("Scene");
@@ -165,7 +168,7 @@ public class PlayerMovement : MonoBehaviour
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
-		countdown = 30 + (int)(Math.Sqrt(levelNumber)*3f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdown = 60 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 	}
@@ -180,6 +183,7 @@ public class PlayerMovement : MonoBehaviour
 		PlayerPrefs.SetInt ("levelNumber", levelNumber);
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 		PlayerPrefs.SetInt ("playerScore", playerScore);
+		PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
 		PlayerPrefs.Save();
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
@@ -402,7 +406,7 @@ public class PlayerMovement : MonoBehaviour
 		}
 
 		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+4f+mouseDrag) * 0.1f;
-		//5 controls the top speed, 0.2 controls maximum clamp when turning
+		//4 controls the top speed, 0.1 controls maximum clamp when turning
 		if (momentum < 0.001f) momentum = 0.001f; //insanity check
 		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
 		if (adjacentSolid < 1f) adjacentSolid = 1f; //insanity check
@@ -491,12 +495,13 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 			PlayerPrefs.SetInt ("playerScore", playerScore);
+			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
 		//save prefs to disk so we remember.
 
-		timeBetweenGuardians *= 0.9995f;
+		timeBetweenGuardians *= 0.999f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
 
 
@@ -612,8 +617,7 @@ public class PlayerMovement : MonoBehaviour
 		} //generate a bot if we don't have 500 and our FPS is at least 180. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
-		yield return new WaitForSeconds(.016f);
-
+		yield return new WaitForSeconds(.016f);		
 	}
 }
 
