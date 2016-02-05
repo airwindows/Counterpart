@@ -64,7 +64,9 @@ public class SetUpBots : MonoBehaviour {
 		//we have now established that you are a particular bot
 
 		SpawnBot (yourMatch, true);
-		//and we spawn your counterpart. Now, anything else is random
+		//and we spawn your counterpart.
+
+		//Now, anything else is random
 		
 		for (int i = 0; i < randBots; i++) {
 			if (i != yourMatch) {
@@ -118,8 +120,8 @@ public class SetUpBots : MonoBehaviour {
 		//three different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
 		//can still turn up very local to the player
 
-		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
-	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) < Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
+		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
+	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
 
 		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
 			spawnLocationA = hit.point + Vector3.up;
@@ -137,6 +139,12 @@ public class SetUpBots : MonoBehaviour {
 		botmovement.jumpCounter = botmovement.brainPointer;
 		botmovement.withinRange = true;
 		myBot.transform.SetParent (botParent.transform);
+		if ((index == yourMatch) && (playermovement.locationOfCounterpart != Vector3.zero)) {
+			myBot.transform.position = playermovement.locationOfCounterpart;
+			//restore counterpart's position unless the location is zero
+			//in this way, if we haven't actively reset the game, the counterpart will remain
+			//at its location, and savescumming to try and get a better random position by the sonar beep won't work.
+		}
 
 	}
 

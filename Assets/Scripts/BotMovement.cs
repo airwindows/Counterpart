@@ -260,7 +260,7 @@ public class BotMovement : MonoBehaviour
 				audioSource.clip = BotBeep;
 			audioSource.volume = 2f;
 			audioSource.reverbZoneMix = 0.01f;
-			float voicePitch = 2.9f - ((center + left + right) * 0.003f);
+			float voicePitch = 2.9f - ((center + left + right) * 0.006f);
 			if (voicePitch > 0f)
 				audioSource.pitch = voicePitch;
 			if (playermovement.yourMatch == yourMatch) {
@@ -272,7 +272,7 @@ public class BotMovement : MonoBehaviour
 				audioSource.Play ();
 
 			if ((overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch)) {
-				botZaps.transform.position = transform.position;
+				botZaps.transform.position = Vector3.MoveTowards(transform.position, overThere,1f);
 				botZaps.transform.LookAt (overThere);
 				botZapsParticles.startSize = 3f;
 				botZapsParticles.Emit(1);
@@ -325,10 +325,10 @@ public class BotMovement : MonoBehaviour
 		}
 		//bot's basic height off ground
 
-		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.004)) {
+		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.001)) {
 			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 3000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
 		//we're gonna try to identify when they're stuck on something and let them jump their way out of it
@@ -423,10 +423,16 @@ public class BotMovement : MonoBehaviour
 			//we establish a new target location based on this color
 
 			if (Physics.Linecast (transform.position, botTarget, otherBots) && !setupbots.gameEnded) {
-				botZaps.transform.position = transform.position;
-				botZaps.transform.LookAt (botTarget);
-				botZapsParticles.startSize = 0.4f;
-				botZapsParticles.Emit (1);
+				if (Physics.Raycast (transform.position, botTarget, out hit)) {
+					if (hit.distance > 4f) {
+						//we only fire talk particles when the target's not too close
+						botZaps.transform.position = Vector3.MoveTowards(transform.position, botTarget, 1f);
+						botZaps.transform.LookAt (botTarget);
+						botZapsParticles.startSize = 0.3f;
+						botZapsParticles.Emit (1);
+					}
+				}
+
 			}
 				//and fires a particle if it's looking at another bot
 				//and then it beeps, either verbed or not

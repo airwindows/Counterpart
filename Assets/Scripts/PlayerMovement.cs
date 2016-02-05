@@ -78,7 +78,7 @@ public class PlayerMovement : MonoBehaviour
 	public Vector3 desiredAimOffsetPosition;
 	public float fps = 60f;
 	private float prevFps = 60f;
-	public float cullRange = 60f;
+	public float cullRange = 120f;
 	public int botNumber;
 	private int prevBotNumber = -1;
 	public int totalBotNumber;
@@ -96,8 +96,8 @@ public class PlayerMovement : MonoBehaviour
 	public float creepRotAngle = 1f;
 	public float skyboxRot = 0f;
 	public float skyboxRot2 = 0f;
-	private float blurFactor = 0.000975f;
-	private float velCompensated = 0.00001f;
+	private float velCompensated = 0.00025f;
+	private Vector3 positionOffset = new Vector3 (40f, -40f, 0f);
 	private GameObject level;
 	private SetUpBots setupbots;
 
@@ -117,25 +117,32 @@ public class PlayerMovement : MonoBehaviour
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
-
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
-		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0);
-		//loading saved data from savegame: commented out in demo
-
+		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0f);
+		locationOfCounterpart = new Vector3 (PlayerPrefs.GetFloat ("locX", 0f), PlayerPrefs.GetFloat ("locY", 0f), PlayerPrefs.GetFloat ("locZ", 0f));
+		//loading saved data from savegame: with no prefs, the defaults are Vector3.zero. The spawn will always replace its location with
+		//saved data unless the location's zeroed out, which must happen with start of a new level or first play of the game.
+		
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
 			playerScore = 0;
 			guardianHostility = 0f;
+			locationOfCounterpart = Vector3.zero;
+			//On a reset, we are also zeroing out the saved location
+
 			QualitySettings.SetQualityLevel(0);
 			PlayerPrefs.SetInt ("levelNumber", levelNumber);
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 			PlayerPrefs.SetInt ("usingController", usingController);
 			PlayerPrefs.SetInt ("playerScore", playerScore);
 			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
+			PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
+			PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
+			PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 			PlayerPrefs.Save ();
 			//reset puts you back to timed play
 			Application.LoadLevel("Scene");
@@ -161,14 +168,14 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
+		creepToRange = (float)Mathf.Min (1800, levelNumber);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
-		countdown = 60 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdown = 30 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 	}
@@ -184,6 +191,9 @@ public class PlayerMovement : MonoBehaviour
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 		PlayerPrefs.SetInt ("playerScore", playerScore);
 		PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
+		PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
+		PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
+		PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 		PlayerPrefs.Save();
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
@@ -216,8 +226,18 @@ public class PlayerMovement : MonoBehaviour
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
-			if (blurHack == 0) {blurHackQuaternion.y = velCompensated; blurHackQuaternion.x = velCompensated;}
-			if (blurHack == 1) {blurHackQuaternion.y = -velCompensated; blurHackQuaternion.x = -velCompensated;}
+			if (blurHack == 0) {
+				blurHackQuaternion.y = velCompensated;
+				blurHackQuaternion.x = velCompensated;
+				//blurHackQuaternion.z = -velCompensated;
+				wireframeCamera.transform.localPosition = positionOffset * -velCompensated;
+			}
+			if (blurHack == 1) {
+				blurHackQuaternion.y = -velCompensated;
+				blurHackQuaternion.x = -velCompensated;
+				//blurHackQuaternion.z = velCompensated;
+				wireframeCamera.transform.localPosition = positionOffset * velCompensated;
+			}
 			wireframeCamera.transform.localRotation = blurHackQuaternion;
 		}
 
@@ -237,7 +257,7 @@ public class PlayerMovement : MonoBehaviour
 		//I don't need Unity's LOD as mine is simpler and works without it and does lots more
 
 		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
-			if (Physics.Raycast (transform.position, Vector3.down, out hit, 99999f, onlyTerrains)){
+			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
 					rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
 				releaseJump = false;
 				//if you jump you can climb steeper walls, but not vertical ones
@@ -421,9 +441,7 @@ public class PlayerMovement : MonoBehaviour
 		startPosition = Vector3.zero;
 		endPosition = rigidBody.velocity * Time.fixedDeltaTime;
 		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
-
-		velCompensated = blurFactor / (Mathf.Sqrt(rigidBody.velocity.magnitude) + 4f);
-
+		
 		if (Physics.Raycast (transform.position, Vector3.down, out hit) == false) {
 			playerPosition = transform.position;
 			playerPosition.y = 99999f;
@@ -446,9 +464,6 @@ public class PlayerMovement : MonoBehaviour
  		else lastPlayerPosition = transform.position;
 		//insanity check: if for any reason we've moved faster than 4 world units per tick, the dreaded geometry glitch has struck
 		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
-
-
-
 
 
 		StartCoroutine ("SlowUpdates");
@@ -496,6 +511,11 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 			PlayerPrefs.SetInt ("playerScore", playerScore);
 			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
+			locationOfCounterpart = Vector3.zero;
+			//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
+			PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
+			PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
+			PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
@@ -602,7 +622,7 @@ public class PlayerMovement : MonoBehaviour
 		creepToRange -= (0.01f + (0.00001f * levelNumber));
 		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 		if (creepToRange < 1f) {
-			creepToRange = (float)Mathf.Min (1800, levelNumber * 2);
+			creepToRange = (float)Mathf.Min (1800, levelNumber);
 			creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 			//each time, the whole rotation of the 'bot map' is different.
 		}
@@ -617,7 +637,9 @@ public class PlayerMovement : MonoBehaviour
 		} //generate a bot if we don't have 500 and our FPS is at least 180. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
-		yield return new WaitForSeconds(.016f);		
+		yield return new WaitForSeconds(.016f);
+		
+
 	}
 }
 
