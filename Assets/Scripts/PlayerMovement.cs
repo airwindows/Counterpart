@@ -100,6 +100,15 @@ public class PlayerMovement : MonoBehaviour
 	private Vector3 positionOffset = new Vector3 (40f, -40f, 0f);
 	private GameObject level;
 	private SetUpBots setupbots;
+	private GameObject packetmeter;
+	private RectTransform packetdisplay;
+	public int packets = 1000;
+	private int lastpackets = 1;
+	private GameObject fuelmeter;
+	private RectTransform fueldisplay;
+	public int fuel = 1000;
+	private int lastfuel = 1;
+	public float wanting = 0f;
 
 
 	void Awake ()
@@ -115,6 +124,12 @@ public class PlayerMovement : MonoBehaviour
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		level = GameObject.FindGameObjectWithTag ("Level");
+		packetmeter = GameObject.FindGameObjectWithTag ("packets");
+		packetdisplay = packetmeter.GetComponent<RectTransform> ();
+		packets = 1000;
+		fuelmeter = GameObject.FindGameObjectWithTag ("fuel");
+		fueldisplay = fuelmeter.GetComponent<RectTransform> ();
+		fuel = 1000;
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
@@ -175,9 +190,12 @@ public class PlayerMovement : MonoBehaviour
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
-		countdown = 30 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdown = 60 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
+		packetdisplay.sizeDelta = new Vector2 (50f, (packets / 1000f) * Screen.height);
+		fueldisplay.sizeDelta = new Vector2 (50f, (fuel / 1000f) * Screen.height);
+
 	}
 
 	void OnApplicationQuit () {
@@ -198,6 +216,17 @@ public class PlayerMovement : MonoBehaviour
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
 		//so that there's drama: whether you find the counterpart or not, going negative will cut back your score!
+	}
+
+	void OnParticleCollision (GameObject shotBy)
+	{
+		if (shotBy.CompareTag("Line")) {
+			if (fuel < 1000) fuel += 1;
+			if (packets < 1000) packets += 1;
+			//anytime you get hit with a zap, it powers you up
+			//but only if it's BotZaps that fired the zap
+			//it's tagged with "Line"
+		}
 	}
 
 	void Update ()
@@ -295,7 +324,7 @@ public class PlayerMovement : MonoBehaviour
 		//the timer section: if we're timed play, we run the countdown timer
 		
 		Vector2 input = Vector2.zero;
-		if (usingController == 0) input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
+		if (usingController == 0) input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
 		//keyboard input
 		if (usingController == 1) {
 			float tempJoystick = Input.GetAxis ("JoystickLookLeftRight") / (Mathf.Abs (Input.GetAxis ("JoystickLookLeftRight")) + 8f);
@@ -318,7 +347,7 @@ public class PlayerMovement : MonoBehaviour
 			initialUpDown = Mathf.Clamp (initialUpDown, -lookAngleUpDown, lookAngleUpDown);
 			input = new Vector2 (Mathf.Pow (Input.GetAxis ("JoystickMoveForwardBack"), 5f), Mathf.Pow (Input.GetAxis ("JoystickStrafeLeftRight"), 5f));
 		} //joystick is a lot more complicated, but necessary to make controller responsive
-
+		
 		Vector3 groundContactNormal;
 		Vector3 rawMove = mainCamera.transform.forward * input.y + mainCamera.transform.right * input.x;
 		float adjacentSolid = 99999;
@@ -329,17 +358,29 @@ public class PlayerMovement : MonoBehaviour
 
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
-			if (!particlesystem.isPlaying) particlesystem.Play ();
-			particlesystem.Emit(1);
+			if (packets > 0) {
+				if (!particlesystem.isPlaying) particlesystem.Play ();
+				particlesystem.Emit(1);
+				packets -= 1;
+
+			}
 		}
 		//this too can be fired by either system with no problem
+		
 
 		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			groundContactNormal = hit.normal;
+			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
+			//set this up here so the fuel can take advantage of the ground proximity
+			if (((desiredMove.magnitude + desiredMove.y)/hit.distance) > 0.9f) {
+				fuel -= Mathf.Max ((int)Mathf.Abs (input.x), (int)Mathf.Abs (input.y));
+				//deplete fuel too
+			}
 		} else {
 			groundContactNormal = Vector3.up;
+			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
 		}
-		desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
+
 
 		pingTimer += 1;
 		if (pingTimer > yourMatchDistance) pingTimer = 0;
@@ -434,8 +475,13 @@ public class PlayerMovement : MonoBehaviour
 		//we're adding the move to the extent that we're near a surface
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
 		//alternately, we have high drag if we're near a surface and little in the air
+		
+		if (fuel > 0) {
+			rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+		}
+		//conserve fuel lest you run out and can't move. If you're motionless, bots will fuel you before packeting you
+		//they will give you what you need most (red bots will give you wings?)
 
-		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 		stepsBetween = 0f;
 		//zero out the step-making part and start over
 		startPosition = Vector3.zero;
@@ -524,6 +570,17 @@ public class PlayerMovement : MonoBehaviour
 		timeBetweenGuardians *= 0.999f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
 
+		if (lastpackets != packets) {
+			lastpackets = packets;
+			packetdisplay.sizeDelta = new Vector2 (50f, (packets / 1000f) * Screen.height);
+			wanting = (2000-(packets+fuel))/500f;
+		}
+		if (lastfuel != fuel) {
+			lastfuel = fuel;
+			fueldisplay.sizeDelta = new Vector2 (50f, (fuel / 1000f) * Screen.height);
+			wanting = (2000-(packets+fuel))/500f;
+		}
+		//updating the meters needn't be 60fps and up
 
 		cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
 
@@ -535,9 +592,6 @@ public class PlayerMovement : MonoBehaviour
 			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
 		}
 
-		if ((fps > 20f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 20. Works for locked framerate too as that's bound to 60
 		if ((fps > 90f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
 		} //generate a bot if we don't have 500 and our FPS is at least 90. Works for locked framerate too as that's bound to 60
@@ -570,7 +624,7 @@ public class PlayerMovement : MonoBehaviour
 		recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
 
-		if ((fps > 40f) && botNumber < totalBotNumber) {
+		if ((fps > 30f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
 		} //generate a bot if we don't have 500 and our FPS is at least 40. Works for locked framerate too as that's bound to 60
 		if ((fps > 120f) && botNumber < totalBotNumber) {

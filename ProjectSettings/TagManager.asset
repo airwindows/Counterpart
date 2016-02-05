@@ -18,6 +18,9 @@ TagManager:
   - overheadLight
   - Line
   - bottombar
+  - packets
+  - fuel
+  - playerPackets
   layers:
   - Default
   - TransparentFX

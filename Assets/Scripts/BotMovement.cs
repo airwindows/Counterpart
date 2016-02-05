@@ -249,38 +249,39 @@ public class BotMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		voicePointer += 1;
-		if (voicePointer >= botBrain.Length)
+		if (shotBy.CompareTag("playerPackets")) {
+			voicePointer += 1;
+			if (voicePointer >= botBrain.Length)
 			voicePointer = 0;
-		int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
-		int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
-		int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
-		if (notEnded && withinRange) {
-			if (audioSource.clip != BotBeep)
-				audioSource.clip = BotBeep;
-			audioSource.volume = 2f;
-			audioSource.reverbZoneMix = 0.01f;
-			float voicePitch = 2.9f - ((center + left + right) * 0.006f);
-			if (voicePitch > 0f)
-				audioSource.pitch = voicePitch;
-			if (playermovement.yourMatch == yourMatch) {
-				audioSource.pitch = 3f;
-				audioSource.volume = 2.5f;
-				//extra emphasis for the counterpart
+			int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
+			int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
+			int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
+			if (notEnded && withinRange) {
+				if (audioSource.clip != BotBeep)
+					audioSource.clip = BotBeep;
+				audioSource.volume = 2f;
+				audioSource.reverbZoneMix = 0.01f;
+				float voicePitch = 2.9f - ((center + left + right) * 0.006f);
+				if (voicePitch > 0f)
+					audioSource.pitch = voicePitch;
+				if (playermovement.yourMatch == yourMatch) {
+					audioSource.pitch = 3f;
+					audioSource.volume = 2.5f;
+					//extra emphasis for the counterpart
+				}
+				if (!audioSource.isPlaying && audioSource.priority < 255)
+					audioSource.Play ();
+				if ((overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch)) {
+					botZaps.transform.position = Vector3.MoveTowards(transform.position, overThere,1f);
+					botZaps.transform.LookAt (overThere);
+					botZapsParticles.startSize = 3f;
+					botZapsParticles.Emit(1);
+				}
+				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 			}
-			if (!audioSource.isPlaying && audioSource.priority < 255)
-				audioSource.Play ();
-
-			if ((overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch)) {
-				botZaps.transform.position = Vector3.MoveTowards(transform.position, overThere,1f);
-				botZaps.transform.LookAt (overThere);
-				botZapsParticles.startSize = 3f;
-				botZapsParticles.Emit(1);
-			}
-			//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
-		}
-		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.4f), (botBrain [voicePointer].g / 255f));
+		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.3f), (botBrain [voicePointer].g / 200f));
 		//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
+		}
 	}
 
 	void Update ()
@@ -407,6 +408,8 @@ public class BotMovement : MonoBehaviour
 			botTarget = ourhero.transform.position;
 		//if we won, hooray! Everybody pile on the lucky bot! :D
 
+
+
 		if (step >= (botBrain [brainPointer].b)) {
 			step = 0;
 			//here's where we do the bot manevuerings
@@ -514,6 +517,19 @@ public class BotMovement : MonoBehaviour
 			if (distance < 50) {
 				meshfilter.mesh = meshLOD1;
 				withinRange = false;
+				int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
+				int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
+				int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
+				if (((left+right+center) < ((50-distance) * playermovement.wanting * playermovement.wanting))) {
+					if (notEnded && playermovement.yourMatch != yourMatch) {
+						botZaps.transform.position = Vector3.MoveTowards(transform.position, ourhero.transform.position,1f);
+						botZaps.transform.LookAt (ourhero.transform.position);
+						botZapsParticles.startSize = 4f;
+						botZapsParticles.Emit(1);
+						botTarget = ourhero.transform.position;
+						//zapping, they rush to the rescue if they are being helpful
+					}
+				}
 			} else {
 				if (distance < 100) {
 					meshfilter.mesh = meshLOD2;
