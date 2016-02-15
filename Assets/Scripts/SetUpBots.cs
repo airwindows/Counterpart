@@ -35,7 +35,7 @@ public class SetUpBots : MonoBehaviour {
 		RaycastHit hit;
 		gameEnded = false;
 		killed = false;
-		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, (float)PlayerMovement.levelNumber, 4000f);
+		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, (float)PlayerMovement.levelNumber*2f, 4000f);
 		//must be after Awake so we can get the level number in Player
 
 		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
@@ -51,16 +51,23 @@ public class SetUpBots : MonoBehaviour {
 		//if they're spawned through the extra-bot-spawn mechanics
 
 		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber * 2);
+		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber/2);
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
-		Renderer ourbody = ourhero.transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
+		//playermovement.colorBits = Resources.Load("BitScreenShades") as Texture2D;
+		//playermovement.colorBits.Apply ();
+		//our hope here is that we can make the texture show up on the screen at bottom. If we can do that we might be able to
+		//do the 'progressively fill in' behavior.
+
+
+
+		//Renderer ourbody = ourhero.transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
 		Texture2D ourTexture = botTexture [yourMatch];
-		ourbody.material.mainTexture = ourTexture;
-		ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);
+		playermovement.ourbody.material.mainTexture = ourTexture;
+		playermovement.ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);
 		//we have now established that you are a particular bot
 
 		SpawnBot (yourMatch, true);
@@ -108,13 +115,13 @@ public class SetUpBots : MonoBehaviour {
 
 		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
 
-		spacing = Random.Range (playermovement.creepToRange / 8f, playermovement.creepToRange);
+		spacing = Random.Range (playermovement.creepToRange / 3f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationA = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (playermovement.creepToRange / 4f, playermovement.creepToRange);
+		spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
+		spacing = Random.Range (1f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationC = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
 		//three different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
@@ -139,13 +146,6 @@ public class SetUpBots : MonoBehaviour {
 		botmovement.jumpCounter = botmovement.brainPointer;
 		botmovement.withinRange = true;
 		myBot.transform.SetParent (botParent.transform);
-		if ((index == yourMatch) && (playermovement.locationOfCounterpart != Vector3.zero)) {
-			myBot.transform.position = playermovement.locationOfCounterpart;
-			//restore counterpart's position unless the location is zero
-			//in this way, if we haven't actively reset the game, the counterpart will remain
-			//at its location, and savescumming to try and get a better random position by the sonar beep won't work.
-		}
-
 	}
 
 	

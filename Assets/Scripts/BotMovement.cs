@@ -44,7 +44,7 @@ public class BotMovement : MonoBehaviour
 	private Vector3 endPosition;
 	private float stepsBetween;
 	private LayerMask onlyTerrains;
-	private LayerMask otherBots;
+	//private LayerMask otherBots;
 	private MeshFilter meshfilter;
 	private Renderer myColor;
 	private RaycastHit hit;
@@ -90,7 +90,7 @@ public class BotMovement : MonoBehaviour
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
-		otherBots = 1 << LayerMask.NameToLayer ("Default");
+		//otherBots = 1 << LayerMask.NameToLayer ("Default");
 		notEnded = true;
 		overThere = Vector3.zero;
 		if (yourMatch == playermovement.yourMatch)
@@ -143,8 +143,8 @@ public class BotMovement : MonoBehaviour
 				audioSource.reverbZoneMix = 0f;
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 				audioSource.volume = 0.5f;
-				PlayerMovement.guardianHostility += ((col.relativeVelocity.magnitude * 0.0001f) * (ourheroRigidbody.velocity.magnitude * 0.0001f));
-				if (PlayerMovement.guardianHostility > 1f) PlayerMovement.guardianHostility = 1f;
+				PlayerMovement.guardianHostility += (ourheroRigidbody.velocity.magnitude * 0.001f);
+				if (PlayerMovement.guardianHostility > 0.5f) PlayerMovement.guardianHostility = 0.5f;
 				//this covers the cases where we kill bots: relative velocity will be super high then. It also handles when we're just sitting there
 
 				guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (ourheroRigidbody.velocity.magnitude * 0.025f));
@@ -204,7 +204,7 @@ public class BotMovement : MonoBehaviour
 
 			//bots hitting bots here
 	
-			if (col.relativeVelocity.magnitude > (playermovement.timeBetweenGuardians * 400f)) {
+			if (col.relativeVelocity.magnitude > (playermovement.timeBetweenGuardians * 100f)) {
 				//amount of this gives us how active the guardians are
 				audioSource.clip = BotCrash;
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
@@ -279,8 +279,19 @@ public class BotMovement : MonoBehaviour
 				}
 				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 			}
-		rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.3f), (botBrain [voicePointer].g / 200f));
-		//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
+			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.3f), (botBrain [voicePointer].g / 200f));
+			//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
+
+			playermovement.packetDisplayIncrement++;
+			if (playermovement.packetDisplayIncrement > 63) playermovement.packetDisplayIncrement = 0;
+			Color col = new Color(playermovement.yourBrain [voicePointer].r / 255f, playermovement.yourBrain [voicePointer].g / 255f, playermovement.yourBrain [voicePointer].b / 255f);
+			playermovement.colorBits.SetPixel(playermovement.packetDisplayIncrement, 0, col);
+			col = new Color(botBrain [voicePointer].r / 255f, botBrain [voicePointer].g / 255f, botBrain [voicePointer].b / 255f);
+			playermovement.colorBits.SetPixel(playermovement.packetDisplayIncrement, 1, col);
+			playermovement.colorBits.Apply();
+			playermovement.colorDisplay.SetMaterial (playermovement.colorDisplay.GetMaterial (), playermovement.colorBits);
+			//update the screen only when it's actually updated
+
 		}
 	}
 
@@ -328,7 +339,7 @@ public class BotMovement : MonoBehaviour
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.001)) {
 			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 1500f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			if (rawMove.magnitude > 3000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
@@ -420,16 +431,19 @@ public class BotMovement : MonoBehaviour
 			brainPointer += 1;
 			if (brainPointer >= botBrain.Length)
 				brainPointer = 0;
+			voicePointer = brainPointer;
+			//start voicepointer at more randomized spot per bot
 			brainR = botBrain [brainPointer].r;
 			brainG = botBrain [brainPointer].g;
 			brainB = botBrain [brainPointer].b;
 			//we establish a new target location based on this color
+			//formerly linecast is for otherBots
 
-			if (Physics.Linecast (transform.position, botTarget, otherBots) && !setupbots.gameEnded) {
+			if (Physics.Linecast (transform.position, botTarget) && !setupbots.gameEnded) {
 				if (Physics.Raycast (transform.position, botTarget, out hit)) {
-					if (hit.distance > 4f) {
+					if (hit.distance > 3f) {
 						//we only fire talk particles when the target's not too close
-						botZaps.transform.position = Vector3.MoveTowards(transform.position, botTarget, 1f);
+						botZaps.transform.position = Vector3.MoveTowards(transform.position, botTarget, 1.1f);
 						botZaps.transform.LookAt (botTarget);
 						botZapsParticles.startSize = 0.3f;
 						botZapsParticles.Emit (1);
@@ -437,7 +451,7 @@ public class BotMovement : MonoBehaviour
 				}
 
 			}
-				//and fires a particle if it's looking at another bot
+				//and fires a particle if it's looking at anything solid
 				//and then it beeps, either verbed or not
 			if (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
 				if (notEnded && withinRange) {
@@ -513,23 +527,23 @@ public class BotMovement : MonoBehaviour
 		if (distance < 25) {
 			meshfilter.mesh = meshLOD0;
 			withinRange = true;
+			int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
+			int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
+			int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
+			if ((left+right+center) < (25-distance)) {
+				if (notEnded && playermovement.packets < 1) {
+					botZaps.transform.position = Vector3.MoveTowards(transform.position, ourhero.transform.position,1.1f);
+					botZaps.transform.LookAt (ourhero.transform.position);
+					botZapsParticles.startSize = 4f;
+					botZapsParticles.Emit(1);
+					botTarget = ourhero.transform.position;
+					//if you have no packets, bots will zap you some if you're close.
+				}
+			}
 		} else {
 			if (distance < 50) {
 				meshfilter.mesh = meshLOD1;
 				withinRange = false;
-				int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
-				int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
-				int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
-				if (((left+right+center) < ((50-distance) * playermovement.wanting * playermovement.wanting))) {
-					if (notEnded && playermovement.yourMatch != yourMatch) {
-						botZaps.transform.position = Vector3.MoveTowards(transform.position, ourhero.transform.position,1f);
-						botZaps.transform.LookAt (ourhero.transform.position);
-						botZapsParticles.startSize = 4f;
-						botZapsParticles.Emit(1);
-						botTarget = ourhero.transform.position;
-						//zapping, they rush to the rescue if they are being helpful
-					}
-				}
 			} else {
 				if (distance < 100) {
 					meshfilter.mesh = meshLOD2;

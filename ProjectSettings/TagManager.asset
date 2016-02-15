@@ -19,8 +19,9 @@ TagManager:
   - Line
   - bottombar
   - packets
-  - fuel
+  - colorbits
   - playerPackets
+  - speed
   layers:
   - Default
   - TransparentFX

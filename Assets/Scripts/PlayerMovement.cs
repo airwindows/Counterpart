@@ -67,6 +67,7 @@ public class PlayerMovement : MonoBehaviour
 	public float maximumBank = 1f;
 	private Vector3 desiredMove = Vector3.zero;
 	private bool releaseJump = true;
+	private bool releaseReverse = true;
 	private float moveLimit = 0f;
 	private float deltaTime = 0f;
 	private float xRot = 0f;
@@ -102,13 +103,18 @@ public class PlayerMovement : MonoBehaviour
 	private SetUpBots setupbots;
 	private GameObject packetmeter;
 	private RectTransform packetdisplay;
+	private GameObject speedmeter;
+	private RectTransform speeddisplay;
+	public int packetDisplayIncrement = 0;
 	public int packets = 1000;
 	private int lastpackets = 1;
-	private GameObject fuelmeter;
-	private RectTransform fueldisplay;
-	public int fuel = 1000;
-	private int lastfuel = 1;
-	public float wanting = 0f;
+	public int speed = 0;
+	private int lastspeed = 1;
+	public Texture2D colorBits;
+	public CanvasRenderer colorDisplay;
+	private bool notStartedColorBitsScreen;
+	public Renderer ourbody;
+
 
 
 	void Awake ()
@@ -121,15 +127,28 @@ public class PlayerMovement : MonoBehaviour
 		//stuff bolted onto the player is always most important
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
+		ourbody = transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
+
+		//colorBits = Resources.Load("BitScreenShades") as Texture2D;
+		colorBits = new Texture2D (64, 2, TextureFormat.ARGB32, false);
+		colorBits.filterMode = FilterMode.Point;
+		for (int i = 0; i < 64; i++) {
+			colorBits.SetPixel(i,0,Color.clear);
+			colorBits.SetPixel(i,1,Color.clear);
+		}
+		colorBits.Apply();
+		colorDisplay = GameObject.FindGameObjectWithTag ("colorbits").GetComponent <CanvasRenderer>();
+		notStartedColorBitsScreen = true;
+		//this should be our screen
+
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		level = GameObject.FindGameObjectWithTag ("Level");
 		packetmeter = GameObject.FindGameObjectWithTag ("packets");
 		packetdisplay = packetmeter.GetComponent<RectTransform> ();
 		packets = 1000;
-		fuelmeter = GameObject.FindGameObjectWithTag ("fuel");
-		fueldisplay = fuelmeter.GetComponent<RectTransform> ();
-		fuel = 1000;
+		speedmeter = GameObject.FindGameObjectWithTag ("speed");
+		speeddisplay = speedmeter.GetComponent<RectTransform> ();
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
@@ -137,10 +156,7 @@ public class PlayerMovement : MonoBehaviour
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0f);
-		locationOfCounterpart = new Vector3 (PlayerPrefs.GetFloat ("locX", 0f), PlayerPrefs.GetFloat ("locY", 0f), PlayerPrefs.GetFloat ("locZ", 0f));
-		//loading saved data from savegame: with no prefs, the defaults are Vector3.zero. The spawn will always replace its location with
-		//saved data unless the location's zeroed out, which must happen with start of a new level or first play of the game.
-		
+
 		if (QualitySettings.maximumLODLevel == 2) {
 			levelNumber = 2;
 			maxlevelNumber = 2;
@@ -155,9 +171,6 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.SetInt ("usingController", usingController);
 			PlayerPrefs.SetInt ("playerScore", playerScore);
 			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
-			PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
-			PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
-			PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 			PlayerPrefs.Save ();
 			//reset puts you back to timed play
 			Application.LoadLevel("Scene");
@@ -183,19 +196,18 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = (float)Mathf.Min (1800, levelNumber);
+		creepToRange = (float)Mathf.Min (1800, levelNumber/2);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		maxbotsTextObj.text = string.Format("score:{0:0.}", playerScore);
-		countdown = 60 + (int)(Math.Sqrt(levelNumber)*4f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		maxbotsTextObj.text = string.Format("high score:{0:0.}", playerScore);
+		countdown = 30 + (int)(Math.Sqrt(levelNumber)*8f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
-		packetdisplay.sizeDelta = new Vector2 (50f, (packets / 1000f) * Screen.height);
-		fueldisplay.sizeDelta = new Vector2 (50f, (fuel / 1000f) * Screen.height);
-
+		packetdisplay.sizeDelta = new Vector2 (64f, (packets / 1000f) * (Screen.height - 24f));
+		colorBits.Apply();
 	}
 
 	void OnApplicationQuit () {
@@ -209,9 +221,6 @@ public class PlayerMovement : MonoBehaviour
 		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
 		PlayerPrefs.SetInt ("playerScore", playerScore);
 		PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
-		PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
-		PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
-		PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 		PlayerPrefs.Save();
 		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
 		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
@@ -221,11 +230,11 @@ public class PlayerMovement : MonoBehaviour
 	void OnParticleCollision (GameObject shotBy)
 	{
 		if (shotBy.CompareTag("Line")) {
-			if (fuel < 1000) fuel += 1;
-			if (packets < 1000) packets += 1;
+			packets = (int)Mathf.Lerp(packets, 1000f, 0.5f);
 			//anytime you get hit with a zap, it powers you up
 			//but only if it's BotZaps that fired the zap
 			//it's tagged with "Line"
+			//it's also more efficient as bots no longer target you for zaps
 		}
 	}
 
@@ -287,7 +296,11 @@ public class PlayerMovement : MonoBehaviour
 
 		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
 			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
-					rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
+				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
+				if (hit.distance > 7f && releaseReverse) {
+					rigidBody.velocity = new Vector3(rigidBody.velocity.x,-Mathf.Abs(rigidBody.velocity.y),rigidBody.velocity.z);
+					releaseReverse = false;
+				}
 				releaseJump = false;
 				//if you jump you can climb steeper walls, but not vertical ones
 				//we can trigger the jump at any time in Update, but only once for each FixedUpdate
@@ -372,10 +385,6 @@ public class PlayerMovement : MonoBehaviour
 			groundContactNormal = hit.normal;
 			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
 			//set this up here so the fuel can take advantage of the ground proximity
-			if (((desiredMove.magnitude + desiredMove.y)/hit.distance) > 0.9f) {
-				fuel -= Mathf.Max ((int)Mathf.Abs (input.x), (int)Mathf.Abs (input.y));
-				//deplete fuel too
-			}
 		} else {
 			groundContactNormal = Vector3.up;
 			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
@@ -476,11 +485,7 @@ public class PlayerMovement : MonoBehaviour
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
 		//alternately, we have high drag if we're near a surface and little in the air
 		
-		if (fuel > 0) {
-			rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-		}
-		//conserve fuel lest you run out and can't move. If you're motionless, bots will fuel you before packeting you
-		//they will give you what you need most (red bots will give you wings?)
+		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 
 		stepsBetween = 0f;
 		//zero out the step-making part and start over
@@ -502,13 +507,13 @@ public class PlayerMovement : MonoBehaviour
 		//insanity check to stop falling into infinity
 
 
-		if (Vector3.Distance (transform.position, lastPlayerPosition) > 4f) {
+		if (Vector3.Distance (transform.position, lastPlayerPosition) > 5f) {
 			transform.position = lastPlayerPosition;
 			rigidBody.velocity = Vector3.zero;
 			endPosition = startPosition;
 		}
  		else lastPlayerPosition = transform.position;
-		//insanity check: if for any reason we've moved faster than 4 world units per tick, the dreaded geometry glitch has struck
+		//insanity check: if for any reason we've moved faster than 5 world units per tick, the dreaded geometry glitch has struck
 		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
 
 
@@ -542,7 +547,9 @@ public class PlayerMovement : MonoBehaviour
 		if (setupbots.gameEnded && (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk"))) {
 			//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
 			if (countdown < 0) countdown = (int)-(Mathf.Sqrt(-countdown));
+			else countdown = (int)Mathf.Sqrt(countdown);
 			//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
+			//you also gain only the sqrt of the available seconds: progress is slower
 			if (QualitySettings.maximumLODLevel == 0) levelNumber = levelNumber + countdown;
 			//if we're on timed play, we can advance very fast but also fall back.
 			if (QualitySettings.maximumLODLevel == 1) levelNumber = levelNumber + 1;
@@ -559,9 +566,6 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
 			locationOfCounterpart = Vector3.zero;
 			//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
-			PlayerPrefs.SetFloat ("locX", locationOfCounterpart.x);
-			PlayerPrefs.SetFloat ("locY", locationOfCounterpart.y);
-			PlayerPrefs.SetFloat ("locZ", locationOfCounterpart.z);
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
@@ -572,15 +576,17 @@ public class PlayerMovement : MonoBehaviour
 
 		if (lastpackets != packets) {
 			lastpackets = packets;
-			packetdisplay.sizeDelta = new Vector2 (50f, (packets / 1000f) * Screen.height);
-			wanting = (2000-(packets+fuel))/500f;
+			packetdisplay.sizeDelta = new Vector2 (64f, (packets / 1000f) * (Screen.height - 24f));
 		}
-		if (lastfuel != fuel) {
-			lastfuel = fuel;
-			fueldisplay.sizeDelta = new Vector2 (50f, (fuel / 1000f) * Screen.height);
-			wanting = (2000-(packets+fuel))/500f;
+		speed = (int)(rigidBody.velocity.magnitude * 7f);
+		if (lastspeed != speed) {
+			lastspeed = speed;
+			speeddisplay.sizeDelta = new Vector2 (64f, 64f+ ((speed / 1000f) * Screen.height));
 		}
 		//updating the meters needn't be 60fps and up
+		
+		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
+		yield return new WaitForSeconds(.016f);
 
 		cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
 
@@ -597,8 +603,6 @@ public class PlayerMovement : MonoBehaviour
 		} //generate a bot if we don't have 500 and our FPS is at least 90. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 
-		yield return new WaitForSeconds(.016f);
-
 		if (transform.position.z < 0f) {
 			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
 				guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z + 4000f);
@@ -609,6 +613,8 @@ public class PlayerMovement : MonoBehaviour
 		}
 		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.3f);
 		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
+
+		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.x > 4000f) {
@@ -632,6 +638,7 @@ public class PlayerMovement : MonoBehaviour
 		} //generate a bot if we don't have 500 and our FPS is at least 120. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 
+		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
 		yield return new WaitForSeconds(.016f);
 
 		if (transform.position.z > 4000f) {
@@ -676,7 +683,7 @@ public class PlayerMovement : MonoBehaviour
 		creepToRange -= (0.01f + (0.00001f * levelNumber));
 		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 		if (creepToRange < 1f) {
-			creepToRange = (float)Mathf.Min (1800, levelNumber);
+			creepToRange = (float)Mathf.Min (1800, levelNumber/2);
 			creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 			//each time, the whole rotation of the 'bot map' is different.
 		}
@@ -691,6 +698,14 @@ public class PlayerMovement : MonoBehaviour
 		} //generate a bot if we don't have 500 and our FPS is at least 180. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
+
+		if (notStartedColorBitsScreen) {
+			colorBits.Apply ();
+			colorDisplay.SetMaterial (colorDisplay.GetMaterial (), colorBits);
+			notStartedColorBitsScreen = false;
+		}
+
+		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
 		yield return new WaitForSeconds(.016f);
 		
 
