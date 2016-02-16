@@ -81,7 +81,7 @@ public class PlayerMovement : MonoBehaviour
 	private float prevFps = 60f;
 	public float cullRange = 120f;
 	public int botNumber;
-	private int prevBotNumber = -1;
+//	private int prevBotNumber = -1;
 	public int totalBotNumber;
 	private int blurHack;
 	private Quaternion blurHackQuaternion;
@@ -129,7 +129,6 @@ public class PlayerMovement : MonoBehaviour
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
 		ourbody = transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
 
-		//colorBits = Resources.Load("BitScreenShades") as Texture2D;
 		colorBits = new Texture2D (64, 2, TextureFormat.ARGB32, false);
 		colorBits.filterMode = FilterMode.Point;
 		for (int i = 0; i < 64; i++) {
@@ -156,30 +155,11 @@ public class PlayerMovement : MonoBehaviour
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0f);
-
-		if (QualitySettings.maximumLODLevel == 2) {
-			levelNumber = 2;
-			maxlevelNumber = 2;
-			playerScore = 0;
-			guardianHostility = 0f;
-			locationOfCounterpart = Vector3.zero;
-			//On a reset, we are also zeroing out the saved location
-
-			QualitySettings.SetQualityLevel(0);
-			PlayerPrefs.SetInt ("levelNumber", levelNumber);
-			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-			PlayerPrefs.SetInt ("usingController", usingController);
-			PlayerPrefs.SetInt ("playerScore", playerScore);
-			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
-			PlayerPrefs.Save ();
-			//reset puts you back to timed play
-			Application.LoadLevel("Scene");
-			//immediately reload. Only works if we set quality level away from what invokes this
-		}
-
 	}
 
 	void Start () {
+		playerPosition = new Vector3 (1610f, 2000f, 2083f);
+		//always start at the center
 		if (Physics.Raycast (playerPosition, Vector3.down, out hit)) playerPosition = hit.point + Vector3.up;
 		transform.position = playerPosition;
 		startPosition = transform.position;
@@ -196,14 +176,14 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = (float)Mathf.Min (1800, levelNumber/2);
+		creepToRange = (float)Mathf.Min (1800, levelNumber);
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("high score:{0:0.}", playerScore);
-		countdown = 30 + (int)(Math.Sqrt(levelNumber)*8f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdown = 20 + (int)(Math.Sqrt(levelNumber)*30f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
 		packetdisplay.sizeDelta = new Vector2 (64f, (packets / 1000f) * (Screen.height - 24f));
@@ -211,26 +191,18 @@ public class PlayerMovement : MonoBehaviour
 	}
 
 	void OnApplicationQuit () {
-		if ((QualitySettings.maximumLODLevel == 0) && (countdown < 0)) levelNumber = levelNumber + countdown;
-		//when quitting out of the game, you can't just repeatedly quit with available time to gain levels.
-		//But, if you're playing timed and you've gone negative, you will pay the negative second cost even if you quit the game
-		//so it becomes a drama of, quit and take your losses? Or keep trying to find the counterpart at a reduced time cost?
-		if (levelNumber < 2) levelNumber = 2;
-		if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
-		PlayerPrefs.SetInt ("levelNumber", levelNumber);
-		PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-		PlayerPrefs.SetInt ("playerScore", playerScore);
-		PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
+		PlayerPrefs.SetInt ("levelNumber", 2);
+		PlayerPrefs.SetInt ("maxlevelNumber", 2);
+		PlayerPrefs.SetInt ("playerScore", 0);
+		PlayerPrefs.SetFloat ("guardianHostility", 0);
 		PlayerPrefs.Save();
-		//if we are quitting, and we have lots of available seconds, we do NOT add them to the score for next time.
-		//But if we're quitting because our seconds are getting very negative, we DO add the negative seconds
-		//so that there's drama: whether you find the counterpart or not, going negative will cut back your score!
+		//if we are quitting, it's like a total reset. Arcade mode.
 	}
 
 	void OnParticleCollision (GameObject shotBy)
 	{
 		if (shotBy.CompareTag("Line")) {
-			packets = (int)Mathf.Lerp(packets, 1000f, 0.5f);
+			packets = (int)Mathf.Lerp(packets, 1000f, 0.25f);
 			//anytime you get hit with a zap, it powers you up
 			//but only if it's BotZaps that fired the zap
 			//it's tagged with "Line"
@@ -319,19 +291,20 @@ public class PlayerMovement : MonoBehaviour
 		//to allow physics to run correctly.
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
-		dollyOffset -= 0.1f;
+		dollyOffset -= 0.06f;
 		if (dollyOffset < 0f) dollyOffset = 0f;
-		
-		if (QualitySettings.maximumLODLevel == 0) {
-			countdownTicker -= 1;
-			if (countdownTicker < 1) {
-				countdownTicker = 30;
-				if (setupbots.gameEnded == false)
-					countdown -= 1;
-				//we stop the clock when we win. Then the saved seconds can be applied to the score
 
-				if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
-				else countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+		countdownTicker -= 1;
+		if (countdownTicker < 1) {
+			countdownTicker = 30;
+			if (setupbots.gameEnded == false) countdown -= 1;
+			if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
+			else {
+				if (countdown > 60) {
+					countdownTextObj.text = string.Format ("{0:0.}m", countdown/60);
+				} else {
+					countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+				}
 			}
 		}
 		//the timer section: if we're timed play, we run the countdown timer
@@ -400,13 +373,16 @@ public class PlayerMovement : MonoBehaviour
 			audiosource.pitch = 3f / ((pingTimer + 64f) / 65f);
 			if (pingTimer == 0) {
 				if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
+					float pingVolume = 1f / Mathf.Sqrt(yourMatchDistance);
+					//if (pingVolume < 0.1) pingVolume = 0.1;
+					//fading sonar, but won't go totally silent
 					if (audiosource.clip != botBeep)
 						audiosource.clip = botBeep;
 					if (yourMatchOccluded) {
-						audiosource.volume = 0.15f;
+						audiosource.volume = pingVolume;
 						audiosource.reverbZoneMix = 1.9f;
 					} else {
-						audiosource.volume = 0.15f;
+						audiosource.volume = pingVolume;
 						//we will keep it the same so it sounds the same: increasing volume
 						//caused it to sound different inc. in the reverb
 						float verbZone = 2f - (70f / yourMatchDistance);
@@ -544,16 +520,14 @@ public class PlayerMovement : MonoBehaviour
 		}
 		//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-		if (setupbots.gameEnded && (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk"))) {
+		if (setupbots.gameEnded && (Input.GetButton ("Next") || Input.GetButton ("KeyboardNext"))) {
 			//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
 			if (countdown < 0) countdown = (int)-(Mathf.Sqrt(-countdown));
 			else countdown = (int)Mathf.Sqrt(countdown);
 			//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
 			//you also gain only the sqrt of the available seconds: progress is slower
-			if (QualitySettings.maximumLODLevel == 0) levelNumber = levelNumber + countdown;
+			levelNumber = levelNumber + countdown;
 			//if we're on timed play, we can advance very fast but also fall back.
-			if (QualitySettings.maximumLODLevel == 1) levelNumber = levelNumber + 1;
-			//if we're on untimed play, we advance one at a time, very gradually
 			if (levelNumber < 2) levelNumber = 2;
 			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
 			if (levelNumber > playerScore) playerScore = levelNumber;
@@ -569,7 +543,7 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.Save();
 			Application.LoadLevel("Scene");
 		}
-		//save prefs to disk so we remember.
+		//save prefs to disk so we remember between levels.
 
 		timeBetweenGuardians *= 0.999f;
 		//with this factor we scale how sensitive guardians are to bots bumping each other
@@ -581,7 +555,7 @@ public class PlayerMovement : MonoBehaviour
 		speed = (int)(rigidBody.velocity.magnitude * 7f);
 		if (lastspeed != speed) {
 			lastspeed = speed;
-			speeddisplay.sizeDelta = new Vector2 (64f, 64f+ ((speed / 1000f) * Screen.height));
+			speeddisplay.sizeDelta = new Vector2 (64f, 64f+((speed / 1000f) * Screen.height));
 		}
 		//updating the meters needn't be 60fps and up
 		
@@ -598,9 +572,9 @@ public class PlayerMovement : MonoBehaviour
 			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
 		}
 
-		if ((fps > 90f) && botNumber < totalBotNumber) {
+		if ((fps > 50f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 90. Works for locked framerate too as that's bound to 60
+		} //generate a bot if we don't have 500 and our FPS is at least 50. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 
 		if (transform.position.z < 0f) {
@@ -632,11 +606,7 @@ public class PlayerMovement : MonoBehaviour
 
 		if ((fps > 30f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 40. Works for locked framerate too as that's bound to 60
-		if ((fps > 120f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 120. Works for locked framerate too as that's bound to 60
-		//uses totalBotNumber because if we start killing them, the top number goes down!
+		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 
 		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
 		yield return new WaitForSeconds(.016f);
@@ -668,34 +638,37 @@ public class PlayerMovement : MonoBehaviour
 		if (botNumber > totalBotNumber) botNumber = totalBotNumber;
 		//it insists on finding gameObjects when we've killed bots, so we force it to be what we want
 		//with this we can tweak sensitivity to things like bot "activityRange"
-		
-		if (fps != prevFps) {
-			fpsTextObj.text = string.Format ("fps:{0:0.}", fps);
+
+
+		if (QualitySettings.vSyncCount < 1) {
+			if (fps != prevFps) {
+				fpsTextObj.text = string.Format ("fps:{0:0.}", fps);
+				prevFps = fps;
+			}
+		} else {
+			fpsTextObj.text = " ";
 			prevFps = fps;
 		}
-		if (botNumber != prevBotNumber) {
-			botsTextObj.text = string.Format("bots:{0:0.}", botNumber);
-			prevBotNumber = botNumber;
-		}
+
+//		if (botNumber != prevBotNumber) {
+//			botsTextObj.text = string.Format("bots:{0:0.}", botNumber);
+//			prevBotNumber = botNumber;
+//		}
 		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
 		//it's necessary
 		
 		creepToRange -= (0.01f + (0.00001f * levelNumber));
 		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 		if (creepToRange < 1f) {
-			creepToRange = (float)Mathf.Min (1800, levelNumber/2);
+			creepToRange = (float)Mathf.Min (1800, levelNumber);
 			creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 			//each time, the whole rotation of the 'bot map' is different.
 		}
 		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
 
-		if ((fps > 60f) && botNumber < totalBotNumber) {
+		if ((fps > 58f) && botNumber < totalBotNumber) {
 			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 60. Works for locked framerate too as that's bound to 60
-		//uses totalBotNumber because if we start killing them, the top number goes down!
-		if ((fps > 180f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 180. Works for locked framerate too as that's bound to 60
+		} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
 		//uses totalBotNumber because if we start killing them, the top number goes down!
 		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
 
@@ -707,8 +680,6 @@ public class PlayerMovement : MonoBehaviour
 
 		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
 		yield return new WaitForSeconds(.016f);
-		
-
 	}
 }
 

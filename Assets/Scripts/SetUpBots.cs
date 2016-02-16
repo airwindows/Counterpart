@@ -51,20 +51,13 @@ public class SetUpBots : MonoBehaviour {
 		//if they're spawned through the extra-bot-spawn mechanics
 
 		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber/2);
+		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber);
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
-		//playermovement.colorBits = Resources.Load("BitScreenShades") as Texture2D;
-		//playermovement.colorBits.Apply ();
-		//our hope here is that we can make the texture show up on the screen at bottom. If we can do that we might be able to
-		//do the 'progressively fill in' behavior.
 
-
-
-		//Renderer ourbody = ourhero.transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
 		Texture2D ourTexture = botTexture [yourMatch];
 		playermovement.ourbody.material.mainTexture = ourTexture;
 		playermovement.ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);

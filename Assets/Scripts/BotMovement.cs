@@ -90,7 +90,6 @@ public class BotMovement : MonoBehaviour
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
-		//otherBots = 1 << LayerMask.NameToLayer ("Default");
 		notEnded = true;
 		overThere = Vector3.zero;
 		if (yourMatch == playermovement.yourMatch)
@@ -121,7 +120,7 @@ public class BotMovement : MonoBehaviour
 				//switch the earthquake FX to normal stereo, music playback
 				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
 				externalSource.PlayOneShot (happyEnding, 1f);
-				logo.GetComponent<Text> ().text = "Success!";
+				logo.GetComponent<Text> ().text = "press e for next level";
 				playermovement.dollyOffset = 3.0f;
 				notEnded = false;
 				//with that, we switch off the bot this is
@@ -256,6 +255,8 @@ public class BotMovement : MonoBehaviour
 			int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
 			int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
 			int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
+			int combined = left * right * center;
+			if (combined > 5000) combined = 5000;
 			if (notEnded && withinRange) {
 				if (audioSource.clip != BotBeep)
 					audioSource.clip = BotBeep;
@@ -271,7 +272,7 @@ public class BotMovement : MonoBehaviour
 				}
 				if (!audioSource.isPlaying && audioSource.priority < 255)
 					audioSource.Play ();
-				if ((overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch)) {
+				if ((overThere != Vector3.zero) && (playermovement.yourMatch != yourMatch) & combined < 4999) {
 					botZaps.transform.position = Vector3.MoveTowards(transform.position, overThere,1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.startSize = 3f;
@@ -284,14 +285,13 @@ public class BotMovement : MonoBehaviour
 
 			playermovement.packetDisplayIncrement++;
 			if (playermovement.packetDisplayIncrement > 63) playermovement.packetDisplayIncrement = 0;
-			Color col = new Color(playermovement.yourBrain [voicePointer].r / 255f, playermovement.yourBrain [voicePointer].g / 255f, playermovement.yourBrain [voicePointer].b / 255f);
+			Color col = new Color(playermovement.yourBrain [voicePointer].r / 255f, playermovement.yourBrain [voicePointer].g / 255f, playermovement.yourBrain [voicePointer].b / 255f, 1.0f-(combined/5000f));
 			playermovement.colorBits.SetPixel(playermovement.packetDisplayIncrement, 0, col);
 			col = new Color(botBrain [voicePointer].r / 255f, botBrain [voicePointer].g / 255f, botBrain [voicePointer].b / 255f);
 			playermovement.colorBits.SetPixel(playermovement.packetDisplayIncrement, 1, col);
 			playermovement.colorBits.Apply();
 			playermovement.colorDisplay.SetMaterial (playermovement.colorDisplay.GetMaterial (), playermovement.colorBits);
 			//update the screen only when it's actually updated
-
 		}
 	}
 
@@ -338,9 +338,9 @@ public class BotMovement : MonoBehaviour
 		//bot's basic height off ground
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.001)) {
-			desiredMove *= 0.4f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 1500f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-			if (rawMove.magnitude > 3000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			desiredMove *= 0.5f; //at one, even a single one of these makes 'em levitate
+			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
 		//we're gonna try to identify when they're stuck on something and let them jump their way out of it
@@ -389,12 +389,10 @@ public class BotMovement : MonoBehaviour
 	IEnumerator SlowUpdates ()
 	{
 		step += 1;
-		//step += (botBrain [brainPointer].r / 100);
 		//red bots are more agitated, to a point.
 
 		if (audioSource.pitch < 0f)
 			audioSource.Stop ();
-		//staccato: the bots can and do shorten their beeps. Green means perky short beeps, no green means longer
 
 		if (transform.position.x < 0f) {
 			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
@@ -437,7 +435,6 @@ public class BotMovement : MonoBehaviour
 			brainG = botBrain [brainPointer].g;
 			brainB = botBrain [brainPointer].b;
 			//we establish a new target location based on this color
-			//formerly linecast is for otherBots
 
 			if (Physics.Linecast (transform.position, botTarget) && !setupbots.gameEnded) {
 				if (Physics.Raycast (transform.position, botTarget, out hit)) {
