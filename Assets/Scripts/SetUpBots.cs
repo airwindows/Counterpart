@@ -123,7 +123,7 @@ public class SetUpBots : MonoBehaviour {
 		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
 	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
 
-		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit) && (Vector3.Distance (ourhero.transform.position, hit.point) < (playermovement.fps * playermovement.cullRange))) {
+		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit)) {
 			spawnLocationA = hit.point + Vector3.up;
 			//if there's a terrain and we're not too far, spawn bot
 		}

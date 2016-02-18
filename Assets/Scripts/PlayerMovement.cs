@@ -28,12 +28,8 @@ public class PlayerMovement : MonoBehaviour
 	public Camera skyboxCamera;
 	public Material overlayBoxMat;
 	public Material overlayBoxMat2;
-	public GameObject fpsText;
-	public GameObject botsText;
 	public GameObject maxbotsText;
 	public GameObject countdownText;
-	public Text fpsTextObj;
-	public Text botsTextObj;
 	public Text maxbotsTextObj;
 	public Text countdownTextObj;
 	private int countdown;
@@ -77,11 +73,7 @@ public class PlayerMovement : MonoBehaviour
 	public float clampRotateAngle = Mathf.PI * 2f;
 	private float lookAngleUpDown = Mathf.PI * 0.2f;
 	public Vector3 desiredAimOffsetPosition;
-	public float fps = 60f;
-	private float prevFps = 60f;
-	public float cullRange = 120f;
 	public int botNumber;
-//	private int prevBotNumber = -1;
 	public int totalBotNumber;
 	private int blurHack;
 	private Quaternion blurHackQuaternion;
@@ -114,6 +106,9 @@ public class PlayerMovement : MonoBehaviour
 	public CanvasRenderer colorDisplay;
 	private bool notStartedColorBitsScreen;
 	public Renderer ourbody;
+	private bool supportsRenderTextures;
+
+	WaitForSeconds playerWait = new WaitForSeconds(0.015f);
 
 
 
@@ -129,9 +124,9 @@ public class PlayerMovement : MonoBehaviour
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
 		ourbody = transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
 
-		colorBits = new Texture2D (64, 2, TextureFormat.ARGB32, false);
+		colorBits = new Texture2D (24, 2, TextureFormat.ARGB32, false);
 		colorBits.filterMode = FilterMode.Point;
-		for (int i = 0; i < 64; i++) {
+		for (int i = 0; i < 24; i++) {
 			colorBits.SetPixel(i,0,Color.clear);
 			colorBits.SetPixel(i,1,Color.clear);
 		}
@@ -139,6 +134,8 @@ public class PlayerMovement : MonoBehaviour
 		colorDisplay = GameObject.FindGameObjectWithTag ("colorbits").GetComponent <CanvasRenderer>();
 		notStartedColorBitsScreen = true;
 		//this should be our screen
+
+		supportsRenderTextures = SystemInfo.supportsRenderTextures;
 
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
@@ -158,8 +155,6 @@ public class PlayerMovement : MonoBehaviour
 	}
 
 	void Start () {
-		playerPosition = new Vector3 (1610f, 2000f, 2083f);
-		//always start at the center
 		if (Physics.Raycast (playerPosition, Vector3.down, out hit)) playerPosition = hit.point + Vector3.up;
 		transform.position = playerPosition;
 		startPosition = transform.position;
@@ -171,8 +166,6 @@ public class PlayerMovement : MonoBehaviour
 		botNumber = levelNumber;
 		totalBotNumber = levelNumber;
 		dollyOffset = 16f / levelNumber;
-		fpsTextObj = fpsText.GetComponent<Text> ();
-		botsTextObj = botsText.GetComponent<Text> ();
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
@@ -186,8 +179,10 @@ public class PlayerMovement : MonoBehaviour
 		countdown = 20 + (int)(Math.Sqrt(levelNumber)*30f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = " ";
 		//set the timer to a space, and only if we have a timer does it become the seconds countdown
-		packetdisplay.sizeDelta = new Vector2 (64f, (packets / 1000f) * (Screen.height - 24f));
+		packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
 		colorBits.Apply();
+		StartCoroutine ("SlowUpdates");
+		//start this only once with a continuous loop inside the coroutine
 	}
 
 	void OnApplicationQuit () {
@@ -232,7 +227,7 @@ public class PlayerMovement : MonoBehaviour
 			//mouse is instantaneous so it can be in Update.
 		}
 
-		if (SystemInfo.supportsRenderTextures) {
+		if (supportsRenderTextures) {
 			blurHack += 1;
 			if (blurHack > 1) blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
@@ -262,10 +257,7 @@ public class PlayerMovement : MonoBehaviour
 		mainCamera.transform.LookAt (desiredAimOffsetPosition);
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
-
-		//QualitySettings.maximumLODlevel is being used to pass controller choice as they can't both run at once
-		//I don't need Unity's LOD as mine is simpler and works without it and does lots more
-
+		
 		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
 			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
 				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
@@ -374,8 +366,6 @@ public class PlayerMovement : MonoBehaviour
 			if (pingTimer == 0) {
 				if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
 					float pingVolume = 1f / Mathf.Sqrt(yourMatchDistance);
-					//if (pingVolume < 0.1) pingVolume = 0.1;
-					//fading sonar, but won't go totally silent
 					if (audiosource.clip != botBeep)
 						audiosource.clip = botBeep;
 					if (yourMatchOccluded) {
@@ -491,195 +481,193 @@ public class PlayerMovement : MonoBehaviour
  		else lastPlayerPosition = transform.position;
 		//insanity check: if for any reason we've moved faster than 5 world units per tick, the dreaded geometry glitch has struck
 		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
-
-
-		StartCoroutine ("SlowUpdates");
 	}
 
 
 
 	IEnumerator SlowUpdates () {
-		if (transform.position.x < 0f) {
-			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
-				guardian.transform.position = new Vector3 (guardian.transform.position.x + 4000f, guardian.transform.position.y, guardian.transform.position.z);
-				guardianmovement.locationTarget.x += 4000f;
+		while (true) {
+			if (transform.position.x < 0f) {
+				if (Vector3.Distance (transform.position, guardian.transform.position) < 600f) {
+					guardian.transform.position = new Vector3 (guardian.transform.position.x + 4000f, guardian.transform.position.y, guardian.transform.position.z);
+					guardianmovement.locationTarget.x += 4000f;
+				}
+				transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
+				playerPosition = lastPlayerPosition = transform.position;
 			}
-			transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
-			playerPosition = lastPlayerPosition = transform.position;
-		}
 
-		if (Mathf.Abs (Input.GetAxis ("JoystickLookUpDown")) > 1f) usingController = 1;
-		if (Mathf.Abs (Input.GetAxis ("JoystickMoveForwardBack")) > 1f) usingController = 1;
-		if (Mathf.Abs (Input.GetAxis ("Horizontal")) > 1f) usingController = 0;
-		if (Mathf.Abs (Input.GetAxis ("Vertical")) > 1f) usingController = 0;
-		//trying to switch stuff based on what controller is in use. Mouse overrides if used
+			if (Mathf.Abs (Input.GetAxis ("JoystickLookUpDown")) > 1f)
+				usingController = 1;
+			if (Mathf.Abs (Input.GetAxis ("JoystickMoveForwardBack")) > 1f)
+				usingController = 1;
+			if (Mathf.Abs (Input.GetAxis ("Horizontal")) > 1f)
+				usingController = 0;
+			if (Mathf.Abs (Input.GetAxis ("Vertical")) > 1f)
+				usingController = 0;
+			//trying to switch stuff based on what controller is in use. Mouse overrides if used
 
-		if (Cursor.lockState != CursorLockMode.Locked) {
-			Cursor.lockState = CursorLockMode.Locked;
-			Cursor.visible = false;
-		}
-		//the notorious cursor code! Kills builds on Unity 5.2 and up
+			if (Cursor.lockState != CursorLockMode.Locked) {
+				Cursor.lockState = CursorLockMode.Locked;
+				Cursor.visible = false;
+			}
+			//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-		if (setupbots.gameEnded && (Input.GetButton ("Next") || Input.GetButton ("KeyboardNext"))) {
-			//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
-			if (countdown < 0) countdown = (int)-(Mathf.Sqrt(-countdown));
-			else countdown = (int)Mathf.Sqrt(countdown);
-			//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
-			//you also gain only the sqrt of the available seconds: progress is slower
-			levelNumber = levelNumber + countdown;
-			//if we're on timed play, we can advance very fast but also fall back.
-			if (levelNumber < 2) levelNumber = 2;
-			if (levelNumber > maxlevelNumber) maxlevelNumber = levelNumber;
-			if (levelNumber > playerScore) playerScore = levelNumber;
-			//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
-			//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
-			//but we can at least get some score benefit from that. Score should not go backwards.
-			PlayerPrefs.SetInt ("levelNumber", levelNumber);
-			PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-			PlayerPrefs.SetInt ("playerScore", playerScore);
-			PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
-			locationOfCounterpart = Vector3.zero;
-			//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
-			PlayerPrefs.Save();
-			Application.LoadLevel("Scene");
-		}
-		//save prefs to disk so we remember between levels.
+			if (setupbots.gameEnded && (Input.GetButton ("Next") || Input.GetButton ("KeyboardNext"))) {
+				//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
+				if (countdown < 0)
+					countdown = (int)-(Mathf.Sqrt (-countdown));
+				else
+					countdown = (int)Mathf.Sqrt (countdown);
+				//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
+				//you also gain only the sqrt of the available seconds: progress is slower
+				levelNumber = levelNumber + countdown;
+				//if we're on timed play, we can advance very fast but also fall back.
+				if (levelNumber < 2)
+					levelNumber = 2;
+				if (levelNumber > maxlevelNumber)
+					maxlevelNumber = levelNumber;
+				if (levelNumber > playerScore)
+					playerScore = levelNumber;
+				//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
+				//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
+				//but we can at least get some score benefit from that. Score should not go backwards.
+				PlayerPrefs.SetInt ("levelNumber", levelNumber);
+				PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
+				PlayerPrefs.SetInt ("playerScore", playerScore);
+				PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
+				locationOfCounterpart = Vector3.zero;
+				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
+				PlayerPrefs.Save ();
+				Application.LoadLevel ("Scene");
+			}
+			//save prefs to disk so we remember between levels.
 
-		timeBetweenGuardians *= 0.999f;
-		//with this factor we scale how sensitive guardians are to bots bumping each other
+			timeBetweenGuardians *= 0.999f;
+			//with this factor we scale how sensitive guardians are to bots bumping each other
 
-		if (lastpackets != packets) {
-			lastpackets = packets;
-			packetdisplay.sizeDelta = new Vector2 (64f, (packets / 1000f) * (Screen.height - 24f));
-		}
-		speed = (int)(rigidBody.velocity.magnitude * 7f);
-		if (lastspeed != speed) {
-			lastspeed = speed;
-			speeddisplay.sizeDelta = new Vector2 (64f, 64f+((speed / 1000f) * Screen.height));
-		}
-		//updating the meters needn't be 60fps and up
+			if (lastpackets != packets) {
+				lastpackets = packets;
+				packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
+			}
+			speed = (int)(rigidBody.velocity.magnitude * 7f);
+			if (lastspeed != speed) {
+				lastspeed = speed;
+				speeddisplay.sizeDelta = new Vector2 (35f, 135f + ((speed / 1000f) * Screen.height));
+			}
+			//updating the meters needn't be 60fps and up
 		
-		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
-		yield return new WaitForSeconds(.016f);
+			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
+				releaseReverse = true;
+			yield return playerWait;
 
-		cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
+			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
 
-		if (altitude < 1f) {
-			backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
-			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000008f);
-		} else {
-			backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
-			backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
-		}
-
-		if ((fps > 50f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 50. Works for locked framerate too as that's bound to 60
-		//uses totalBotNumber because if we start killing them, the top number goes down!
-
-		if (transform.position.z < 0f) {
-			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
-				guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z + 4000f);
-				guardianmovement.locationTarget.z += 4000f;
+			if (altitude < 1f) {
+				backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
+				backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000008f);
+			} else {
+				backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
+				backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
 			}
-			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
-			playerPosition = lastPlayerPosition = transform.position;
-		}
-		mainCamera.fieldOfView = baseFOV + (cameraZoom*0.3f);
-		backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 
-		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
-		yield return new WaitForSeconds(.016f);
+			if (botNumber < totalBotNumber) {
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+			} //generate a bot if we don't have 500 and our FPS is at least 50. Works for locked framerate too as that's bound to 60
+			//uses totalBotNumber because if we start killing them, the top number goes down!
 
-		if (transform.position.x > 4000f) {
-			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
-				guardian.transform.position = new Vector3 (guardian.transform.position.x - 4000f, guardian.transform.position.y, guardian.transform.position.z);
-				guardianmovement.locationTarget.x -= 4000f;
+			if (transform.position.z < 0f) {
+				if (Vector3.Distance (transform.position, guardian.transform.position) < 600f) {
+					guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z + 4000f);
+					guardianmovement.locationTarget.z += 4000f;
+				}
+				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
+				playerPosition = lastPlayerPosition = transform.position;
 			}
-			transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
-			playerPosition = lastPlayerPosition = transform.position;
-		}
-		wireframeCamera.fieldOfView = baseFOV + (cameraZoom*0.4f);
-		float recip = 1.0f / backgroundSound.gain;
-		recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
-		recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
+			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.3f);
+			backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 
-		if ((fps > 30f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
+			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
+				releaseReverse = true;
+			yield return playerWait;
 
-		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
-		yield return new WaitForSeconds(.016f);
-
-		if (transform.position.z > 4000f) {
-			if (Vector3.Distance(transform.position, guardian.transform.position) < 600f) {
-				guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z - 4000f);
-				guardianmovement.locationTarget.z -= 4000f;
+			if (transform.position.x > 4000f) {
+				if (Vector3.Distance (transform.position, guardian.transform.position) < 600f) {
+					guardian.transform.position = new Vector3 (guardian.transform.position.x - 4000f, guardian.transform.position.y, guardian.transform.position.z);
+					guardianmovement.locationTarget.x -= 4000f;
+				}
+				transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
+				playerPosition = lastPlayerPosition = transform.position;
 			}
-			transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
-			playerPosition = lastPlayerPosition = transform.position;
-		}
-		///walls! We bounce off the four walls of the world rather than falling out of it
+			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.4f);
+			float recip = 1.0f / backgroundSound.gain;
+			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
+			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
 
-		skyboxRot -= 0.08f;
-		if (skyboxRot < 0f) skyboxRot += 360f;
-		overlayBoxMat.SetFloat ("_Rotation", skyboxRot);
-		skyboxRot2 += 0.06f;
-		if (skyboxRot > 360f) skyboxRot -= 360f;
-		overlayBoxMat2.SetFloat ("_Rotation", skyboxRot2);
-		//try to rotate the skybox
-		skyboxCamera.fieldOfView = baseFOV + 10f + cameraZoom;
+			if (botNumber < totalBotNumber) {
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+			} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 
-		backgroundSound.gain = 1.0f / recip;
+			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
+				releaseReverse = true;
+			yield return playerWait;
 
-		deltaTime += (Time.deltaTime - deltaTime) * 0.1f;
-		fps = Mathf.Lerp (fps, 1.0f / deltaTime, 8.0f/fps);
-		botNumber = allbots.transform.childCount;
-		if (botNumber > totalBotNumber) botNumber = totalBotNumber;
-		//it insists on finding gameObjects when we've killed bots, so we force it to be what we want
-		//with this we can tweak sensitivity to things like bot "activityRange"
-
-
-		if (QualitySettings.vSyncCount < 1) {
-			if (fps != prevFps) {
-				fpsTextObj.text = string.Format ("fps:{0:0.}", fps);
-				prevFps = fps;
+			if (transform.position.z > 4000f) {
+				if (Vector3.Distance (transform.position, guardian.transform.position) < 600f) {
+					guardian.transform.position = new Vector3 (guardian.transform.position.x, guardian.transform.position.y, guardian.transform.position.z - 4000f);
+					guardianmovement.locationTarget.z -= 4000f;
+				}
+				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
+				playerPosition = lastPlayerPosition = transform.position;
 			}
-		} else {
-			fpsTextObj.text = " ";
-			prevFps = fps;
+			///walls! We bounce off the four walls of the world rather than falling out of it
+
+			skyboxRot -= 0.08f;
+			if (skyboxRot < 0f)
+				skyboxRot += 360f;
+			overlayBoxMat.SetFloat ("_Rotation", skyboxRot);
+			skyboxRot2 += 0.06f;
+			if (skyboxRot > 360f)
+				skyboxRot -= 360f;
+			overlayBoxMat2.SetFloat ("_Rotation", skyboxRot2);
+			//try to rotate the skybox
+			skyboxCamera.fieldOfView = baseFOV + 10f + cameraZoom;
+
+			backgroundSound.gain = 1.0f / recip;
+
+			botNumber = allbots.transform.childCount;
+			if (botNumber > totalBotNumber)
+				botNumber = totalBotNumber;
+			//it insists on finding gameObjects when we've killed bots, so we force it to be what we want
+			//with this we can tweak sensitivity to things like bot "activityRange"
+
+			deltaTime += (Time.deltaTime - deltaTime) * 0.01f;
+					
+			creepToRange -= (0.01f + (0.00001f * levelNumber));
+			//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
+			if (creepToRange < 1f) {
+				creepToRange = (float)Mathf.Min (1800, levelNumber);
+				creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+				//each time, the whole rotation of the 'bot map' is different.
+			}
+			//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
+
+			if (botNumber < totalBotNumber) {
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+			} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
+			//uses totalBotNumber because if we start killing them, the top number goes down!
+			//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
+
+			if (notStartedColorBitsScreen) {
+				colorBits.Apply ();
+				colorDisplay.SetMaterial (colorDisplay.GetMaterial (), colorBits);
+				notStartedColorBitsScreen = false;
+			}
+
+			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
+				releaseReverse = true;
+
+			yield return playerWait;
 		}
-
-//		if (botNumber != prevBotNumber) {
-//			botsTextObj.text = string.Format("bots:{0:0.}", botNumber);
-//			prevBotNumber = botNumber;
-//		}
-		//screen readouts. Even in SlowUpdates doing stuff with strings is expensive, so we check to make sure
-		//it's necessary
-		
-		creepToRange -= (0.01f + (0.00001f * levelNumber));
-		//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
-		if (creepToRange < 1f) {
-			creepToRange = (float)Mathf.Min (1800, levelNumber);
-			creepRotAngle = UnityEngine.Random.Range (0f, 359f);
-			//each time, the whole rotation of the 'bot map' is different.
-		}
-		//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
-
-		if ((fps > 58f) && botNumber < totalBotNumber) {
-			ourlevel.GetComponent<SetUpBots>().SpawnBot(-1,false);
-		} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
-		//uses totalBotNumber because if we start killing them, the top number goes down!
-		//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
-
-		if (notStartedColorBitsScreen) {
-			colorBits.Apply ();
-			colorDisplay.SetMaterial (colorDisplay.GetMaterial (), colorBits);
-			notStartedColorBitsScreen = false;
-		}
-
-		if (Input.GetButtonUp("Jump") || Input.GetButtonUp("KeyboardJump")) releaseReverse = true;
-		yield return new WaitForSeconds(.016f);
 	}
 }
 

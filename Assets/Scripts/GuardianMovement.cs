@@ -27,6 +27,9 @@ public class GuardianMovement : MonoBehaviour {
 	private GameObject level;
 	private GameObject logo;
 
+	WaitForSeconds guardianWait = new WaitForSeconds(0.02f);
+
+
 	void Awake ()
 	{
 		audiosource = GetComponent<AudioSource>();
@@ -43,6 +46,7 @@ public class GuardianMovement : MonoBehaviour {
 		level = GameObject.FindGameObjectWithTag ("Level");
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		setupbots = level.GetComponent<SetUpBots>();
+		StartCoroutine ("SlowUpdates");
 	}
 
 	void OnCollisionEnter(Collision col) {
@@ -93,41 +97,42 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
 		//note that it is NOT '_Color' that we are setting with the material dialog in Unity!
-
-		StartCoroutine ("SlowUpdates");
-
-	}
+		}
 
 	IEnumerator SlowUpdates () {
-		locationTarget = Vector3.Lerp(locationTarget, ourhero.transform.position, PlayerMovement.guardianHostility);
-		if (guardianCooldown > 1) guardianCooldown = Mathf.Lerp (guardianCooldown, Mathf.Sqrt (guardianCooldown), 0.01f);
-		//this ought to make it go for the player pretty hard if they kill bots.
-		//otherwise, it just goes to the source of the altercation which might include you.
-		yield return new WaitForSeconds (0.01f);
+		while (true) {
+			locationTarget = Vector3.Lerp (locationTarget, ourhero.transform.position, PlayerMovement.guardianHostility);
+			if (guardianCooldown > 1)
+				guardianCooldown = Mathf.Lerp (guardianCooldown, Mathf.Sqrt (guardianCooldown), 0.01f);
+			//this ought to make it go for the player pretty hard if they kill bots.
+			//otherwise, it just goes to the source of the altercation which might include you.
+			yield return guardianWait;
 
-		Vector3 rawMove = locationTarget - transform.position;
-		rawMove = rawMove.normalized * 200f * guardianCooldown;
-		myRigidbody.AddForce (rawMove);
-		guardianCooldown -= (0.05f / myRigidbody.velocity.magnitude);
-		//rapidly cool off if it's holding position over a bot, not so much when chasing
-		if (guardianCooldown < 0f) {
-			guardianCooldown = 0f;
-			locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
-			rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 100f;
+			Vector3 rawMove = locationTarget - transform.position;
+			rawMove = rawMove.normalized * 200f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
+			guardianCooldown -= (0.05f / myRigidbody.velocity.magnitude);
+			//rapidly cool off if it's holding position over a bot, not so much when chasing
+			if (guardianCooldown < 0f) {
+				guardianCooldown = 0f;
+				locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
+				rawMove = locationTarget - transform.position;
+				rawMove = rawMove.normalized * 100f;
+				myRigidbody.AddForce (rawMove);
+			}
+			yield return guardianWait;
+
+			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
+			audiosource.pitch = pitch;
+			audiosource.priority = 4;
+			audiosource.volume = Mathf.Lerp (audiosource.volume, 0.3f + guardianCooldown, 0.001f + (guardianCooldown * 0.1f));
+			//ramp up fast but switch off more slowly.
+			if (Physics.Linecast (transform.position, ourhero.transform.position))
+				audiosource.volume = 0.2f + (guardianCooldown);
+			if (setupbots.gameEnded == true)
+				audiosource.volume = 0f;
+
+			yield return guardianWait;
 		}
-		yield return new WaitForSeconds (0.01f);
-
-		float pitch = 0.5f / Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
-		audiosource.pitch = pitch;
-		audiosource.priority = 4;
-		audiosource.volume = Mathf.Lerp(audiosource.volume, 0.3f + guardianCooldown, 0.001f + (guardianCooldown * 0.1f));
-		//ramp up fast but switch off more slowly.
-		if (Physics.Linecast (transform.position, ourhero.transform.position)) audiosource.volume = 0.2f + (guardianCooldown);
-		if (setupbots.gameEnded == true) audiosource.volume = 0f;
-
-		yield return new WaitForSeconds (0.01f);
-
 	}
 }
