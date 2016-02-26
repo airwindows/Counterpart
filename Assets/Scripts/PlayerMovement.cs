@@ -32,7 +32,7 @@ public class PlayerMovement : MonoBehaviour
 	public GameObject countdownText;
 	public Text maxbotsTextObj;
 	public Text countdownTextObj;
-	private int countdown;
+	public static int countdown;
 	private int countdownTicker = 30;
 	//we're running the physics engine at 30 fps
 	public GameObject cameraDolly;
@@ -59,11 +59,10 @@ public class PlayerMovement : MonoBehaviour
 	public float baseFOV = 68f;
 	public float mouseSensitivity = 100f;
 	public float mouseDrag = 0f;
-	public float baseJump = 2.5f;
+	public float baseJump;
 	public float maximumBank = 1f;
 	private Vector3 desiredMove = Vector3.zero;
 	private bool releaseJump = true;
-	private bool releaseReverse = true;
 	private float moveLimit = 0f;
 	private float deltaTime = 0f;
 	private float xRot = 0f;
@@ -161,7 +160,8 @@ public class PlayerMovement : MonoBehaviour
 		endPosition = transform.position;
 		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
-		baseJump = 2.5f;
+		baseJump = Mathf.Sqrt (levelNumber) * 0.5f;
+		//make it so we can get around in the crazy levels
 		blurHack = 0;
 		botNumber = levelNumber;
 		totalBotNumber = levelNumber;
@@ -177,8 +177,7 @@ public class PlayerMovement : MonoBehaviour
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("high score:{0:0.}", playerScore);
 		countdown = 20 + (int)(Math.Sqrt(levelNumber)*30f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
-		countdownTextObj.text = " ";
-		//set the timer to a space, and only if we have a timer does it become the seconds countdown
+		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown/60, Mathf.Sqrt(countdown));
 		packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
 		colorBits.Apply();
 		StartCoroutine ("SlowUpdates");
@@ -186,18 +185,21 @@ public class PlayerMovement : MonoBehaviour
 	}
 
 	void OnApplicationQuit () {
-		PlayerPrefs.SetInt ("levelNumber", 2);
-		PlayerPrefs.SetInt ("maxlevelNumber", 2);
-		PlayerPrefs.SetInt ("playerScore", 0);
-		PlayerPrefs.SetFloat ("guardianHostility", 0);
-		PlayerPrefs.Save();
-		//if we are quitting, it's like a total reset. Arcade mode.
+		if (setupbots.gameEnded != true) {
+			PlayerPrefs.SetInt ("levelNumber", 2);
+			PlayerPrefs.SetInt ("maxlevelNumber", 2);
+			PlayerPrefs.SetInt ("playerScore", 0);
+			PlayerPrefs.SetFloat ("guardianHostility", 0);
+			PlayerPrefs.Save ();
+			//if we are quitting, it's like a total reset. Arcade mode.
+			//BUT, if we're quitting out of the win screen we can resume.
+		}
 	}
 
 	void OnParticleCollision (GameObject shotBy)
 	{
 		if (shotBy.CompareTag("Line")) {
-			packets = (int)Mathf.Lerp(packets, 1000f, 0.25f);
+			packets = (int)Mathf.Lerp(packets, 1000f, 0.1f);
 			//anytime you get hit with a zap, it powers you up
 			//but only if it's BotZaps that fired the zap
 			//it's tagged with "Line"
@@ -261,10 +263,6 @@ public class PlayerMovement : MonoBehaviour
 		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
 			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
 				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
-				if (hit.distance > 7f && releaseReverse) {
-					rigidBody.velocity = new Vector3(rigidBody.velocity.x,-Mathf.Abs(rigidBody.velocity.y),rigidBody.velocity.z);
-					releaseReverse = false;
-				}
 				releaseJump = false;
 				//if you jump you can climb steeper walls, but not vertical ones
 				//we can trigger the jump at any time in Update, but only once for each FixedUpdate
@@ -289,13 +287,16 @@ public class PlayerMovement : MonoBehaviour
 		countdownTicker -= 1;
 		if (countdownTicker < 1) {
 			countdownTicker = 30;
-			if (setupbots.gameEnded == false) countdown -= 1;
-			if (countdown < 0) countdownTextObj.text = string.Format ("{0:0.} (quit:{1:0.})", -(Mathf.Sqrt(-countdown)), countdown);
-			else {
-				if (countdown > 60) {
-					countdownTextObj.text = string.Format ("{0:0.}m", countdown/60);
-				} else {
-					countdownTextObj.text = string.Format ("{0:0.}s", countdown);
+			if (setupbots.gameEnded == false) {
+				countdown -= 1;
+				if (countdown < 0)
+					countdownTextObj.text = string.Format ("{0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (-countdown));
+				else {
+					if (countdown > 60) {
+						countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown));
+					} else {
+						countdownTextObj.text = string.Format ("{0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown));
+					}
 				}
 			}
 		}
@@ -340,7 +341,6 @@ public class PlayerMovement : MonoBehaviour
 				if (!particlesystem.isPlaying) particlesystem.Play ();
 				particlesystem.Emit(1);
 				packets -= 1;
-
 			}
 		}
 		//this too can be fired by either system with no problem
@@ -513,34 +513,10 @@ public class PlayerMovement : MonoBehaviour
 			//the notorious cursor code! Kills builds on Unity 5.2 and up
 
 			if (setupbots.gameEnded && (Input.GetButton ("Next") || Input.GetButton ("KeyboardNext"))) {
-				//trigger new level load on completing of level, by talking/firing (not jump, jump is OK)
-				if (countdown < 0)
-					countdown = (int)-(Mathf.Sqrt (-countdown));
-				else
-					countdown = (int)Mathf.Sqrt (countdown);
-				//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
-				//you also gain only the sqrt of the available seconds: progress is slower
-				levelNumber = levelNumber + countdown;
-				//if we're on timed play, we can advance very fast but also fall back.
-				if (levelNumber < 2)
-					levelNumber = 2;
-				if (levelNumber > maxlevelNumber)
-					maxlevelNumber = levelNumber;
-				if (levelNumber > playerScore)
-					playerScore = levelNumber;
-				//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
-				//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
-				//but we can at least get some score benefit from that. Score should not go backwards.
-				PlayerPrefs.SetInt ("levelNumber", levelNumber);
-				PlayerPrefs.SetInt ("maxlevelNumber", maxlevelNumber);
-				PlayerPrefs.SetInt ("playerScore", playerScore);
-				PlayerPrefs.SetFloat ("guardianHostility", guardianHostility);
-				locationOfCounterpart = Vector3.zero;
-				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
-				PlayerPrefs.Save ();
+				//trigger new level load on completing of level
+				//we have already updated the score and saved prefs
 				Application.LoadLevel ("Scene");
 			}
-			//save prefs to disk so we remember between levels.
 
 			timeBetweenGuardians *= 0.999f;
 			//with this factor we scale how sensitive guardians are to bots bumping each other
@@ -556,11 +532,10 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//updating the meters needn't be 60fps and up
 		
-			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
-				releaseReverse = true;
 			yield return playerWait;
 
-			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 3f);
+			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 2f) + (initialUpDown*4f) + (playerPosition.y/200f);
+			//elaborate zoom goes wide angle for looking up, and for high ground
 
 			if (altitude < 1f) {
 				backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
@@ -583,11 +558,9 @@ public class PlayerMovement : MonoBehaviour
 				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
 				playerPosition = lastPlayerPosition = transform.position;
 			}
-			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.3f);
+			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			backgroundSound.brightness = (transform.position.y / 900.0f) + 0.2f;
 
-			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
-				releaseReverse = true;
 			yield return playerWait;
 
 			if (transform.position.x > 4000f) {
@@ -598,7 +571,7 @@ public class PlayerMovement : MonoBehaviour
 				transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 				playerPosition = lastPlayerPosition = transform.position;
 			}
-			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.4f);
+			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			float recip = 1.0f / backgroundSound.gain;
 			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
@@ -607,8 +580,6 @@ public class PlayerMovement : MonoBehaviour
 				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
 			} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 
-			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
-				releaseReverse = true;
 			yield return playerWait;
 
 			if (transform.position.z > 4000f) {
@@ -630,7 +601,7 @@ public class PlayerMovement : MonoBehaviour
 				skyboxRot -= 360f;
 			overlayBoxMat2.SetFloat ("_Rotation", skyboxRot2);
 			//try to rotate the skybox
-			skyboxCamera.fieldOfView = baseFOV + 10f + cameraZoom;
+			skyboxCamera.fieldOfView = baseFOV + cameraZoom;
 
 			backgroundSound.gain = 1.0f / recip;
 
@@ -662,9 +633,6 @@ public class PlayerMovement : MonoBehaviour
 				colorDisplay.SetMaterial (colorDisplay.GetMaterial (), colorBits);
 				notStartedColorBitsScreen = false;
 			}
-
-			if (Input.GetButtonUp ("Jump") || Input.GetButtonUp ("KeyboardJump"))
-				releaseReverse = true;
 
 			yield return playerWait;
 		}

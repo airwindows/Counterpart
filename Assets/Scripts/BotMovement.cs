@@ -24,6 +24,7 @@ public class BotMovement : MonoBehaviour
 	public AudioClip BotBeep;
 	public AudioClip happyEnding;
 	private bool notEnded;
+	private bool hasBeenPinged;
 	private AudioSource audioSource;
 	private float audioSourceVolume;
 	public Color32[] botBrain;
@@ -56,7 +57,7 @@ public class BotMovement : MonoBehaviour
 	private SetUpBots setupbots;
 	private GameObject guardianN;
 	private GameObject guardianS;
-	private GameObject logo;
+	//private GameObject logo;
 	private GameObject botZaps;
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
@@ -89,12 +90,13 @@ public class BotMovement : MonoBehaviour
 		//should be pretty cheap to keep references for this stuff around
 		//using this, we can punch a target or chase behavior into a specific guardian,
 		//without it having to go through all the bots when it needs to react to a specific bot.
-		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+		//logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		withinRange = false;
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		notEnded = true;
+		hasBeenPinged = false;
 		overThere = Vector3.zero;
 		if (yourMatch == playermovement.yourMatch)
 			audioSource.priority = 2;
@@ -108,7 +110,7 @@ public class BotMovement : MonoBehaviour
 	void OnCollisionEnter (Collision col)
 	{
 		jumpCounter -= 1;
-		//no matter what, if we collide we trigger the jump counter
+		//no matter what, if we collide we increment the jump counter
 		if (col.gameObject.tag == "Player" && notEnded) {
 			if (playermovement.yourMatch == yourMatch) {
 				rigidBody.velocity = Vector3.zero;
@@ -126,11 +128,39 @@ public class BotMovement : MonoBehaviour
 				//switch the earthquake FX to normal stereo, music playback
 				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
 				externalSource.PlayOneShot (happyEnding, 1f);
-				logo.GetComponent<Text> ().text = "press e for next level";
+				//logo.GetComponent<Text> ().text = "press e for next level";
 				playermovement.dollyOffset = 3.0f;
 				notEnded = false;
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
+				//now to update all the score related stuff, so the 'next level' just triggers the new level load
+				if (PlayerMovement.countdown < 0)
+					PlayerMovement.countdown = (int)-(Mathf.Sqrt (-PlayerMovement.countdown));
+				else
+					PlayerMovement.countdown = (int)Mathf.Sqrt (PlayerMovement.countdown);
+				//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
+				//you also gain only the sqrt of the available seconds: progress is slower
+				PlayerMovement.levelNumber = PlayerMovement.levelNumber + PlayerMovement.countdown;
+				//if we're on timed play, we can advance very fast but also fall back.
+				if (PlayerMovement.levelNumber < 2)
+					PlayerMovement.levelNumber = 2;
+				if (PlayerMovement.levelNumber > PlayerMovement.maxlevelNumber)
+					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber;
+				if (PlayerMovement.levelNumber > PlayerMovement.playerScore)
+					PlayerMovement.playerScore = PlayerMovement.levelNumber;
+				//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
+				//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
+				//but we can at least get some score benefit from that. Score should not go backwards.
+				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
+				PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
+				PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
+				PlayerPrefs.SetFloat ("guardianHostility", PlayerMovement.guardianHostility);
+				playermovement.locationOfCounterpart = Vector3.zero;
+				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
+				playermovement.maxbotsTextObj.text = string.Format("high score:{0:0.}", PlayerMovement.playerScore);
+				playermovement.countdownTextObj.text = "safe! press e for next level or quit here to continue later";
+				PlayerMovement.countdown = 0;
+				PlayerPrefs.Save ();
 			} else {
 				//it's not collision with the counterpart, so we do other collides
 			if (col.relativeVelocity.magnitude > 30f) {
@@ -254,6 +284,9 @@ public class BotMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
+		hasBeenPinged = true;
+		//speak to your bot and it will pursue you. It will have to be able to see you though. Other bots can alert it, but
+		//it'll forget if you're too distant.
 		if (shotBy.CompareTag("playerPackets")) {
 			voicePointer += 1;
 			if (voicePointer >= botBrain.Length)
@@ -347,7 +380,11 @@ public class BotMovement : MonoBehaviour
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.001)) {
 			desiredMove *= 0.5f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 1000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+			if (rawMove.magnitude > 1000f) {
+				rigidBody.AddForce (desiredMove, ForceMode.Impulse);
+				hasBeenPinged = false;
+				//if you're too far, the bot stops looking for you
+			}
 			if (rawMove.magnitude > 2000f) rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
@@ -436,10 +473,15 @@ public class BotMovement : MonoBehaviour
 					if (Physics.Raycast (transform.position, botTarget, out hit)) {
 						if (hit.distance > 3f) {
 							//we only fire talk particles when the target's not too close
-							botZaps.transform.position = Vector3.MoveTowards (transform.position, botTarget, 1.1f);
-							botZaps.transform.LookAt (botTarget);
-							botZapsParticles.startSize = 0.3f;
-							botZapsParticles.Emit (1);
+							if (playermovement.yourMatch != yourMatch || hit.distance < 10f) {
+								//if it's not your waifu OR if it's close
+								//(do not fire particles when distant if you're waifu, you might trigger yourself
+								//to playerseeking behavior. Zaps should come from OTHER bots not yourself)
+								botZaps.transform.position = Vector3.MoveTowards (transform.position, botTarget, 1.1f);
+								botZaps.transform.LookAt (botTarget);
+								botZapsParticles.startSize = 0.3f;
+								botZapsParticles.Emit (1);
+							}
 						}
 					}
 
@@ -561,10 +603,16 @@ public class BotMovement : MonoBehaviour
 				playermovement.locationOfCounterpart = transform.position;
 				//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
 				//also we update you with its location so bots looking for you can know if they see it.
-				if (Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains))
+				if (Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
 					playermovement.yourMatchOccluded = true;
+				} else {
+					if (hasBeenPinged == true) {
+						botTarget = ourhero.transform.position;
+					}
+				}
 				//by doing this, we can see whether there's anything in the way of the ray between match and player
 				//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.
+				//and if your counterpart can see you and has been spoken to by you, it rushes to greet you.
 			} else {
 				//not the counterpart
 				audioSource.priority = Mathf.Clamp ((int)distance, 3, 254);

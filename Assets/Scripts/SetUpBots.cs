@@ -35,7 +35,7 @@ public class SetUpBots : MonoBehaviour {
 		RaycastHit hit;
 		gameEnded = false;
 		killed = false;
-		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, (float)PlayerMovement.levelNumber*2f, 4000f);
+		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, 100f+((float)PlayerMovement.levelNumber*2f), 4000f);
 		//must be after Awake so we can get the level number in Player
 
 		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);

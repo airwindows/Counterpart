@@ -72,6 +72,11 @@ public class GuardianMovement : MonoBehaviour {
 				Destroy (playermovement);
 				logo.GetComponent<Text>().text = "Game Over";
 				guardianCooldown = 0f;
+				PlayerPrefs.SetInt ("levelNumber", 2);
+				PlayerPrefs.SetInt ("maxlevelNumber", 2);
+				PlayerPrefs.SetInt ("playerScore", 0);
+				PlayerPrefs.SetFloat ("guardianHostility", 0);
+				PlayerPrefs.Save();
 			}
 			//player is unkillable if they've already won
 		}
@@ -92,7 +97,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.02f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.04f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -113,6 +118,9 @@ public class GuardianMovement : MonoBehaviour {
 			myRigidbody.AddForce (rawMove);
 			guardianCooldown -= (0.05f / myRigidbody.velocity.magnitude);
 			//rapidly cool off if it's holding position over a bot, not so much when chasing
+			if (guardianCooldown > 4f) guardianCooldown = 4f;
+			//safeguard against crazy psycho zapping around
+
 			if (guardianCooldown < 0f) {
 				guardianCooldown = 0f;
 				locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
