@@ -155,6 +155,7 @@ public class BotMovement : MonoBehaviour
 				PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
 				PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
 				PlayerPrefs.SetFloat ("guardianHostility", PlayerMovement.guardianHostility);
+				PlayerPrefs.SetFloat ("mouseSensitivity", playermovement.mouseSensitivity);
 				playermovement.locationOfCounterpart = Vector3.zero;
 				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
 				playermovement.maxbotsTextObj.text = string.Format("high score:{0:0.}", PlayerMovement.playerScore);

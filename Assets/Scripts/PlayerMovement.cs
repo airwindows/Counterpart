@@ -151,6 +151,7 @@ public class PlayerMovement : MonoBehaviour
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0f);
+		mouseSensitivity = PlayerPrefs.GetFloat ("mouseSensitivity", 300f);
 	}
 
 	void Start () {
@@ -190,6 +191,7 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.SetInt ("maxlevelNumber", 2);
 			PlayerPrefs.SetInt ("playerScore", 0);
 			PlayerPrefs.SetFloat ("guardianHostility", 0);
+			PlayerPrefs.SetFloat ("mouseSensitivity", mouseSensitivity);
 			PlayerPrefs.Save ();
 			//if we are quitting, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
@@ -344,6 +346,12 @@ public class PlayerMovement : MonoBehaviour
 			}
 		}
 		//this too can be fired by either system with no problem
+
+		if (Input.GetAxisRaw ("ScrollWheel") != 0.0) {
+			mouseSensitivity += (Input.GetAxisRaw ("ScrollWheel")*10f);
+			if (mouseSensitivity < 100f) mouseSensitivity = 100f;
+			countdownTextObj.text = string.Format ("mouse sensitivity {0:0.}", mouseSensitivity/10f);
+		}
 		
 
 		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, 99999f, onlyTerrains)) {
