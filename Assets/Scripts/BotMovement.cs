@@ -45,7 +45,7 @@ public class BotMovement : MonoBehaviour
 	private Vector3 endPosition;
 	private float stepsBetween;
 	private LayerMask onlyTerrains;
-	//private LayerMask otherBots;
+	private LayerMask otherBots;
 	private MeshFilter meshfilter;
 	private Renderer myColor;
 	private RaycastHit hit;
@@ -57,7 +57,7 @@ public class BotMovement : MonoBehaviour
 	private SetUpBots setupbots;
 	private GameObject guardianN;
 	private GameObject guardianS;
-	//private GameObject logo;
+	private GameObject logo;
 	private GameObject botZaps;
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
@@ -90,11 +90,12 @@ public class BotMovement : MonoBehaviour
 		//should be pretty cheap to keep references for this stuff around
 		//using this, we can punch a target or chase behavior into a specific guardian,
 		//without it having to go through all the bots when it needs to react to a specific bot.
-		//logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		withinRange = false;
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
+		otherBots = 1 << LayerMask.NameToLayer ("Default");
 		notEnded = true;
 		hasBeenPinged = false;
 		overThere = Vector3.zero;
@@ -112,56 +113,76 @@ public class BotMovement : MonoBehaviour
 		jumpCounter -= 1;
 		//no matter what, if we collide we increment the jump counter
 		if (col.gameObject.tag == "Player" && notEnded) {
-			if (playermovement.yourMatch == yourMatch) {
-				rigidBody.velocity = Vector3.zero;
-				lerpedMove = Vector3.zero;
-				ourheroRigidbody.velocity = Vector3.zero;
-				//freeze, in shock and delight!
-				
-				AudioSource externalSource = GameObject.FindGameObjectWithTag ("overheadLight").GetComponent<AudioSource> ();
-				externalSource.Stop ();
-				externalSource.clip = happyEnding;
-				externalSource.pitch = 1f;
-				externalSource.volume = 1f;
-				externalSource.reverbZoneMix = 0f;
-				externalSource.spatialBlend = 0f;
-				//switch the earthquake FX to normal stereo, music playback
-				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
-				externalSource.PlayOneShot (happyEnding, 1f);
-				//logo.GetComponent<Text> ().text = "press e for next level";
-				playermovement.dollyOffset = 3.0f;
-				notEnded = false;
-				//with that, we switch off the bot this is
-				setupbots.gameEnded = true;
-				//now to update all the score related stuff, so the 'next level' just triggers the new level load
-				if (PlayerMovement.countdown < 0)
-					PlayerMovement.countdown = (int)-(Mathf.Sqrt (-PlayerMovement.countdown));
-				else
-					PlayerMovement.countdown = (int)Mathf.Sqrt (PlayerMovement.countdown);
-				//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
-				//you also gain only the sqrt of the available seconds: progress is slower
-				PlayerMovement.levelNumber = PlayerMovement.levelNumber + PlayerMovement.countdown;
-				//if we're on timed play, we can advance very fast but also fall back.
-				if (PlayerMovement.levelNumber < 2)
-					PlayerMovement.levelNumber = 2;
-				if (PlayerMovement.levelNumber > PlayerMovement.maxlevelNumber)
-					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber;
-				if (PlayerMovement.levelNumber > PlayerMovement.playerScore)
-					PlayerMovement.playerScore = PlayerMovement.levelNumber;
-				//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
-				//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
-				//but we can at least get some score benefit from that. Score should not go backwards.
-				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
-				PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
-				PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
-				PlayerPrefs.SetFloat ("guardianHostility", PlayerMovement.guardianHostility);
-				PlayerPrefs.SetFloat ("mouseSensitivity", playermovement.mouseSensitivity);
-				playermovement.locationOfCounterpart = Vector3.zero;
-				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
-				playermovement.maxbotsTextObj.text = string.Format("high score:{0:0.}", PlayerMovement.playerScore);
-				playermovement.countdownTextObj.text = "safe! press e for next level or quit here to continue later";
-				PlayerMovement.countdown = 0;
-				PlayerPrefs.Save ();
+			if ((playermovement.yourMatch == yourMatch) && (setupbots.gameEnded == false)) {
+				if (col.relativeVelocity.magnitude > 40f) {
+					myColor.material.color = new Color (0.35f, 0.35f, 0.35f);
+					sphereCollider.material.staticFriction = 0.2f;
+					Destroy (this);
+					//REKKT. Bot's brain is destroyed and since it was your soulmate...
+					ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
+					ourheroRigidbody.freezeRotation = false;
+					ourheroRigidbody.angularDrag = 0.6f;
+					setupbots.gameEnded = true;
+					setupbots.killed = true;
+					Destroy (playermovement);
+					logo.GetComponent<Text> ().text = "Game Over";
+					//you are REKKT too!
+					audioSource.clip = BotCrashTinkle;
+					audioSource.reverbZoneMix = 0f;
+					audioSource.pitch = 0.08f;
+					audioSource.volume = 1f;
+					audioSource.Play();
+					//override with an epic fail crash
+				} else {
+					rigidBody.velocity = Vector3.zero;
+					lerpedMove = Vector3.zero;
+					ourheroRigidbody.velocity = Vector3.zero;
+					//freeze, in shock and delight!	
+					AudioSource externalSource = GameObject.FindGameObjectWithTag ("overheadLight").GetComponent<AudioSource> ();
+					externalSource.Stop ();
+					externalSource.clip = happyEnding;
+					externalSource.pitch = 1f;
+					externalSource.volume = 1f;
+					externalSource.reverbZoneMix = 0f;
+					externalSource.spatialBlend = 0f;
+					//switch the earthquake FX to normal stereo, music playback
+					//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
+					externalSource.PlayOneShot (happyEnding, 1f);
+					//logo.GetComponent<Text> ().text = "press e for next level";
+					playermovement.dollyOffset = 3.0f;
+					notEnded = false;
+					//with that, we switch off the bot this is
+					setupbots.gameEnded = true;
+					//now to update all the score related stuff, so the 'next level' just triggers the new level load
+					if (PlayerMovement.countdown < 0)
+						PlayerMovement.countdown = (int)-(Mathf.Sqrt (-PlayerMovement.countdown*10));
+					else
+						PlayerMovement.countdown = (int)Mathf.Sqrt (PlayerMovement.countdown*10);
+					//if you succeed, you pay only half the seconds cost in level. If you quit you pay full cost.
+					//you also gain only the sqrt of the available seconds: progress is slower
+					PlayerMovement.levelNumber = PlayerMovement.levelNumber + PlayerMovement.countdown;
+					//if we're on timed play, we can advance very fast but also fall back.
+					if (PlayerMovement.levelNumber < 2)
+						PlayerMovement.levelNumber = 2;
+					if (PlayerMovement.levelNumber > PlayerMovement.maxlevelNumber)
+						PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber;
+					if (PlayerMovement.levelNumber > PlayerMovement.playerScore)
+						PlayerMovement.playerScore = PlayerMovement.levelNumber;
+					//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
+					//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
+					//but we can at least get some score benefit from that. Score should not go backwards.
+					PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
+					PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
+					PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
+					PlayerPrefs.SetFloat ("guardianHostility", PlayerMovement.guardianHostility);
+					PlayerPrefs.SetFloat ("mouseSensitivity", playermovement.mouseSensitivity);
+					playermovement.locationOfCounterpart = Vector3.zero;
+					//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
+					playermovement.maxbotsTextObj.text = string.Format("high score:{0:0.}", PlayerMovement.playerScore);
+					playermovement.countdownTextObj.text = "safe! press e for next level or quit here to continue later";
+					PlayerMovement.countdown = 0;
+					PlayerPrefs.Save ();
+				}
 			} else {
 				//it's not collision with the counterpart, so we do other collides
 			if (col.relativeVelocity.magnitude > 30f) {
@@ -316,7 +337,7 @@ public class BotMovement : MonoBehaviour
 					if (playermovement.yourMatch != yourMatch) {
 						botZaps.transform.position = Vector3.MoveTowards(transform.position, overThere,1f);
 						botZaps.transform.LookAt (overThere);
-						botZapsParticles.startSize = 3f;
+						botZapsParticles.startSize = 4f;
 						botZapsParticles.Emit(1);
 					}
 				}
@@ -470,7 +491,7 @@ public class BotMovement : MonoBehaviour
 				brainB = botBrain [brainPointer].b;
 				//we establish a new target location based on this color
 
-				if (Physics.Linecast (transform.position, botTarget) && !setupbots.gameEnded) {
+				if (Physics.Linecast (transform.position, botTarget, otherBots) && !setupbots.gameEnded) {
 					if (Physics.Raycast (transform.position, botTarget, out hit)) {
 						if (hit.distance > 3f) {
 							//we only fire talk particles when the target's not too close
@@ -480,7 +501,7 @@ public class BotMovement : MonoBehaviour
 								//to playerseeking behavior. Zaps should come from OTHER bots not yourself)
 								botZaps.transform.position = Vector3.MoveTowards (transform.position, botTarget, 1.1f);
 								botZaps.transform.LookAt (botTarget);
-								botZapsParticles.startSize = 0.3f;
+								botZapsParticles.startSize = 4f;
 								botZapsParticles.Emit (1);
 							}
 						}

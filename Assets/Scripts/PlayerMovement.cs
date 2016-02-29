@@ -166,19 +166,19 @@ public class PlayerMovement : MonoBehaviour
 		blurHack = 0;
 		botNumber = levelNumber;
 		totalBotNumber = levelNumber;
-		dollyOffset = 16f / levelNumber;
+		dollyOffset = 8f / levelNumber;
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = (float)Mathf.Min (1800, levelNumber);
+		creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format("high score:{0:0.}", playerScore);
-		countdown = 20 + (int)(Math.Sqrt(levelNumber)*30f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
-		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown/60, Mathf.Sqrt(countdown));
+		countdown = 20 + (int)(Math.Sqrt(levelNumber)*50f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown/60, Mathf.Sqrt(countdown*10));
 		packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
 		colorBits.Apply();
 		StartCoroutine ("SlowUpdates");
@@ -292,12 +292,12 @@ public class PlayerMovement : MonoBehaviour
 			if (setupbots.gameEnded == false) {
 				countdown -= 1;
 				if (countdown < 0)
-					countdownTextObj.text = string.Format ("{0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (-countdown));
+					countdownTextObj.text = string.Format ("{0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
 				else {
 					if (countdown > 60) {
-						countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown));
+						countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt(countdown*10));
 					} else {
-						countdownTextObj.text = string.Format ("{0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown));
+						countdownTextObj.text = string.Format ("{0:0.}s (+{1:0.})", countdown, Mathf.Sqrt(countdown*10));
 					}
 				}
 			}
@@ -336,6 +336,10 @@ public class PlayerMovement : MonoBehaviour
 
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
+
+		if (Input.GetButton("UnJump")) {
+			rigidBody.velocity = new Vector3(rigidBody.velocity.x, -Mathf.Abs(rigidBody.velocity.y), rigidBody.velocity.z);
+		}
 
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
@@ -621,10 +625,10 @@ public class PlayerMovement : MonoBehaviour
 
 			deltaTime += (Time.deltaTime - deltaTime) * 0.01f;
 					
-			creepToRange -= (0.01f + (0.00001f * levelNumber));
+			creepToRange -= (0.01f + (0.0001f * levelNumber));
 			//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 			if (creepToRange < 1f) {
-				creepToRange = (float)Mathf.Min (1800, levelNumber);
+				creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
 				creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 				//each time, the whole rotation of the 'bot map' is different.
 			}

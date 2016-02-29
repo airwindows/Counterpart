@@ -8,6 +8,7 @@ public class GuardianMovement : MonoBehaviour {
 
 	private AudioSource audiosource;
 	public AudioClip[] earthquakes;
+	public AudioClip BotCrashTinkle;
 	private AudioSource externalSource;
 	private Rigidbody myRigidbody;
 	private Material guardianCore;
@@ -70,6 +71,13 @@ public class GuardianMovement : MonoBehaviour {
 				setupbots.gameEnded = true;
 				setupbots.killed = true;
 				Destroy (playermovement);
+				externalSource.clip = BotCrashTinkle;
+				externalSource.reverbZoneMix = 0f;
+				externalSource.pitch = 0.08f;
+				externalSource.priority = 3;
+				externalSource.volume = 1f;
+				externalSource.Play();
+				//
 				logo.GetComponent<Text>().text = "Game Over";
 				guardianCooldown = 0f;
 				PlayerPrefs.SetInt ("levelNumber", 2);

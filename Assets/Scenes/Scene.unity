@@ -191,7 +191,7 @@ AudioSource:
   m_Pitch: 1
   Loop: 0
   Mute: 0
-  Priority: 128
+  Priority: 11
   DopplerLevel: 1
   MinDistance: 1
   MaxDistance: 500
@@ -859,6 +859,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 7d23d5b43c554443699ccf21c4740707, type: 3}
   - {fileID: 8300000, guid: d7dd1787b8a484ce3b4bd395ddd0f185, type: 3}
   - {fileID: 8300000, guid: f298a8e87644243428a731a741579033, type: 3}
+  BotCrashTinkle: {fileID: 0}
   locationTarget: {x: 0, y: 0, z: 0}
   guardianCooldown: 0
 --- !u!135 &487292346

@@ -17,7 +17,7 @@ public class SetUpBots : MonoBehaviour {
 	private float degrees;
 	private Vector3 spawnLocationA;
 	private Vector3 spawnLocationB;
-	private Vector3 spawnLocationC;
+	private Vector3 centerLocation;
 
 
 	//Texture array must be set up in the editor as LoadAll no worky
@@ -35,9 +35,11 @@ public class SetUpBots : MonoBehaviour {
 		RaycastHit hit;
 		gameEnded = false;
 		killed = false;
-		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, 100f+((float)PlayerMovement.levelNumber*2f), 4000f);
+		float terrainHeight = 20f + Mathf.Sqrt (PlayerMovement.levelNumber * 20) + ((PlayerMovement.levelNumber * PlayerMovement.levelNumber) / 9999f);
+		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, terrainHeight, 4000f);
 		//must be after Awake so we can get the level number in Player
 
+		centerLocation = new Vector3 (1614f, 9f, 2083f);
 		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
 		if (Physics.Raycast (PlayerMovement.playerPosition, Vector3.down, out hit)) PlayerMovement.playerPosition = hit.point + Vector3.up;
 		playermovement.transform.position = PlayerMovement.playerPosition;
@@ -51,7 +53,7 @@ public class SetUpBots : MonoBehaviour {
 		//if they're spawned through the extra-bot-spawn mechanics
 
 		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		playermovement.creepToRange = Mathf.Min (1800, PlayerMovement.levelNumber);
+		playermovement.creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);
@@ -114,14 +116,10 @@ public class SetUpBots : MonoBehaviour {
 		spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
 		degrees = Random.Range (0f, 360f);
 		spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (1f, playermovement.creepToRange);
-		degrees = Random.Range (0f, 360f);
-		spawnLocationC = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		//three different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
+		//two different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
 		//can still turn up very local to the player
 
-		if (Vector3.Distance(ourhero.transform.position, spawnLocationB) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationB;
-	    if (Vector3.Distance(ourhero.transform.position, spawnLocationC) > Vector3.Distance(ourhero.transform.position, spawnLocationA)) spawnLocationA = spawnLocationC;
+		if (Vector3.Distance(centerLocation, spawnLocationB) < Vector3.Distance(centerLocation, spawnLocationA)) spawnLocationA = spawnLocationB;
 
 		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit)) {
 			spawnLocationA = hit.point + Vector3.up;
@@ -133,10 +131,10 @@ public class SetUpBots : MonoBehaviour {
 			//exception: if it's the counterpart, spawn anyway, it won't be culled
 		}
 		myBot.transform.position = spawnLocationA;
-		botmovement.botTarget = spawnLocationC;
+		botmovement.botTarget = spawnLocationA;
 		botmovement.step = step;
-		botmovement.brainPointer = Random.Range(0, botmovement.botBrain.Length);
-		botmovement.jumpCounter = botmovement.brainPointer;
+		botmovement.brainPointer = step;
+		botmovement.jumpCounter = step;
 		botmovement.withinRange = true;
 		myBot.transform.SetParent (botParent.transform);
 	}

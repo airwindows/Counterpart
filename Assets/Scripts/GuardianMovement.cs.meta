@@ -1,13 +1,11 @@
 fileFormatVersion: 2
 guid: 96c56be1074034be49adb267bcecd282
-timeCreated: 1452597933
+timeCreated: 1456784219
 licenseType: Free
 MonoImporter:
   serializedVersion: 2
   defaultReferences:
-  - guardianCore: {fileID: 2100000, guid: abcfa1b18ef484a77be6882c5559a190, type: 2}
-  - guardianMiddle: {fileID: 2100000, guid: 1aa5f7302489a40e1a9a7a8722355643, type: 2}
-  - guardianSurface: {fileID: 2100000, guid: b39d8750a90654ffb82e4bc15f8f2eba, type: 2}
+  - BotCrashTinkle: {fileID: 8300000, guid: a51262161a3d348459f460b649e86633, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
