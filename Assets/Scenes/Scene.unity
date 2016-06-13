@@ -3922,6 +3922,7 @@ MonoBehaviour:
   colorBits: {fileID: 0}
   colorDisplay: {fileID: 0}
   ourbody: {fileID: 0}
+  freezeTime: 0
 --- !u!135 &1049631307
 SphereCollider:
   m_ObjectHideFlags: 0

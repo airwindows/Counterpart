@@ -106,10 +106,9 @@ public class PlayerMovement : MonoBehaviour
 	private bool notStartedColorBitsScreen;
 	public Renderer ourbody;
 	private bool supportsRenderTextures;
-
-	WaitForSeconds playerWait = new WaitForSeconds(0.015f);
-
-
+	public bool freezeTime;
+	private bool enableFreezeButton;
+	WaitForSeconds playerWait = new WaitForSeconds (0.015f);
 
 	void Awake ()
 	{
@@ -126,11 +125,11 @@ public class PlayerMovement : MonoBehaviour
 		colorBits = new Texture2D (24, 2, TextureFormat.ARGB32, false);
 		colorBits.filterMode = FilterMode.Point;
 		for (int i = 0; i < 24; i++) {
-			colorBits.SetPixel(i,0,Color.clear);
-			colorBits.SetPixel(i,1,Color.clear);
+			colorBits.SetPixel (i, 0, Color.clear);
+			colorBits.SetPixel (i, 1, Color.clear);
 		}
-		colorBits.Apply();
-		colorDisplay = GameObject.FindGameObjectWithTag ("colorbits").GetComponent <CanvasRenderer>();
+		colorBits.Apply ();
+		colorDisplay = GameObject.FindGameObjectWithTag ("colorbits").GetComponent <CanvasRenderer> ();
 		notStartedColorBitsScreen = true;
 		//this should be our screen
 
@@ -146,6 +145,8 @@ public class PlayerMovement : MonoBehaviour
 		speeddisplay = speedmeter.GetComponent<RectTransform> ();
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
+		freezeTime = false;
+		enableFreezeButton = true;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
@@ -154,15 +155,15 @@ public class PlayerMovement : MonoBehaviour
 		mouseSensitivity = PlayerPrefs.GetFloat ("mouseSensitivity", 300f);
 	}
 
-	void Start () {
-		if (Physics.Raycast (playerPosition, Vector3.down, out hit)) playerPosition = hit.point + Vector3.up;
+	void Start ()
+	{
+		if (Physics.Raycast (playerPosition, Vector3.down, out hit))
+			playerPosition = hit.point + Vector3.up;
 		transform.position = playerPosition;
 		startPosition = transform.position;
 		endPosition = transform.position;
 		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
-		baseJump = Mathf.Sqrt (levelNumber) * 0.5f;
-		//make it so we can get around in the crazy levels
 		blurHack = 0;
 		botNumber = levelNumber;
 		totalBotNumber = levelNumber;
@@ -170,22 +171,23 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
+		creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
 		//somewhat randomized but still in the area of what's set
 		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		maxbotsTextObj.text = string.Format("high score:{0:0.}", playerScore);
-		countdown = 20 + (int)(Math.Sqrt(levelNumber)*50f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
-		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown/60, Mathf.Sqrt(countdown*10));
+		maxbotsTextObj.text = string.Format ("high score:{0:0.}", playerScore);
+		countdown = 20 + (int)(Math.Sqrt (levelNumber) * 50f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
+		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
 		packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
-		colorBits.Apply();
+		colorBits.Apply ();
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
 	}
 
-	void OnApplicationQuit () {
+	void OnApplicationQuit ()
+	{
 		if (setupbots.gameEnded != true) {
 			PlayerPrefs.SetInt ("levelNumber", 2);
 			PlayerPrefs.SetInt ("maxlevelNumber", 2);
@@ -200,8 +202,8 @@ public class PlayerMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		if (shotBy.CompareTag("Line")) {
-			packets = (int)Mathf.Lerp(packets, 1000f, 0.1f);
+		if (shotBy.CompareTag ("Line")) {
+			packets = (int)Mathf.Lerp (packets, 1000f, 0.1f);
 			//anytime you get hit with a zap, it powers you up
 			//but only if it's BotZaps that fired the zap
 			//it's tagged with "Line"
@@ -212,16 +214,17 @@ public class PlayerMovement : MonoBehaviour
 	void Update ()
 	{
 		//Each frame we run Update, regardless of what game control/physics is doing. This is the fundamental 'tick' of the game but it's wildly time-variant: it goes as fast as possible.
-		cameraDolly.transform.localPosition = Vector3.Lerp(startPosition, endPosition, stepsBetween) + (Vector3.up * dollyOffset);
+		cameraDolly.transform.localPosition = Vector3.Lerp (startPosition, endPosition, stepsBetween) + (Vector3.up * dollyOffset);
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
 
 		if (usingController == 0) {
 			float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
 			mouseDrag = Mathf.Abs (tempMouse);
-			initialTurn = Mathf.Lerp(initialTurn, initialTurn - tempMouse, Mathf.Abs(Input.GetAxis ("MouseX")*0.1f));
+			initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxis ("MouseX") * 0.1f));
 			tempMouse = Input.GetAxis ("MouseY") / mouseSensitivity;
-			if (Mathf.Abs (tempMouse) > mouseDrag) mouseDrag = Mathf.Abs (tempMouse);
-			initialUpDown = Mathf.Lerp(initialUpDown, initialUpDown + tempMouse, Mathf.Abs(Input.GetAxis ("MouseY")*0.1f));
+			if (Mathf.Abs (tempMouse) > mouseDrag)
+				mouseDrag = Mathf.Abs (tempMouse);
+			initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxis ("MouseY") * 0.1f));
 			tempMouse = -tempMouse;
 			if (initialTurn < 0f)
 				initialTurn += clampRotateAngle;
@@ -233,7 +236,8 @@ public class PlayerMovement : MonoBehaviour
 
 		if (supportsRenderTextures) {
 			blurHack += 1;
-			if (blurHack > 1) blurHack = 0;
+			if (blurHack > 1)
+				blurHack = 0;
 			blurHackQuaternion = wireframeCamera.transform.localRotation;
 			if (blurHack == 0) {
 				blurHackQuaternion.y = velCompensated;
@@ -262,9 +266,9 @@ public class PlayerMovement : MonoBehaviour
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
 		
-		if ((Input.GetButton("Jump") || Input.GetButton("KeyboardJump")) && releaseJump) {
-			if (Physics.Raycast (transform.position, Vector3.down, out hit)){
-				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow(hit.distance, 3), ForceMode.Impulse);
+		if ((Input.GetButton ("Jump") || Input.GetButton ("KeyboardJump")) && releaseJump) {
+			if (Physics.Raycast (transform.position, Vector3.down, out hit)) {
+				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow (hit.distance, 3), ForceMode.Impulse);
 				releaseJump = false;
 				//if you jump you can climb steeper walls, but not vertical ones
 				//we can trigger the jump at any time in Update, but only once for each FixedUpdate
@@ -284,20 +288,34 @@ public class PlayerMovement : MonoBehaviour
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
 		dollyOffset -= 0.06f;
-		if (dollyOffset < 0f) dollyOffset = 0f;
+		if (dollyOffset < 0f)
+			dollyOffset = 0f;
 
 		countdownTicker -= 1;
 		if (countdownTicker < 1) {
+			enableFreezeButton = true;
 			countdownTicker = 30;
 			if (setupbots.gameEnded == false) {
-				countdown -= 1;
-				if (countdown < 0)
-					countdownTextObj.text = string.Format ("{0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
-				else {
-					if (countdown > 60) {
-						countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt(countdown*10));
-					} else {
-						countdownTextObj.text = string.Format ("{0:0.}s (+{1:0.})", countdown, Mathf.Sqrt(countdown*10));
+				if (freezeTime == false) {
+					countdown -= 1;
+					if (countdown < 0)
+						countdownTextObj.text = string.Format ("remaining {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
+					else {
+						if (countdown > 60) {
+							countdownTextObj.text = string.Format ("remaining {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
+						} else {
+							countdownTextObj.text = string.Format ("remaining {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
+						}
+					}
+				} else {
+					if (countdown < 0)
+						countdownTextObj.text = string.Format ("timefreeze {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
+					else {
+						if (countdown > 60) {
+							countdownTextObj.text = string.Format ("timefreeze {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
+						} else {
+							countdownTextObj.text = string.Format ("timefreeze {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
+						}
 					}
 				}
 			}
@@ -305,8 +323,39 @@ public class PlayerMovement : MonoBehaviour
 		//the timer section: if we're timed play, we run the countdown timer
 		
 		Vector2 input = Vector2.zero;
-		if (usingController == 0) input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
+		if (usingController == 0)
+			input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
 		//keyboard input
+		if (Input.GetButton ("UnJump") && enableFreezeButton == true) {
+			freezeTime = !freezeTime;
+			//handy time toggle. this makes it possible to explore
+
+			if (freezeTime == false) {
+				if (countdown < 0)
+					countdownTextObj.text = string.Format ("remaining {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
+				else {
+					if (countdown > 60) {
+						countdownTextObj.text = string.Format ("remaining {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
+					} else {
+						countdownTextObj.text = string.Format ("remaining {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
+					}
+				}
+			} else {
+				if (countdown < 0)
+					countdownTextObj.text = string.Format ("timefreeze {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
+				else {
+					if (countdown > 60) {
+						countdownTextObj.text = string.Format ("timefreeze {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
+					} else {
+						countdownTextObj.text = string.Format ("timefreeze {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
+					}
+				}
+			}
+			//update the display instantly so the control feels responsive, but don't increment countdown
+			enableFreezeButton = false;
+			//kill the response until there's another second: no insanely fast state-flickering plz
+		}
+
 		if (usingController == 1) {
 			float tempJoystick = Input.GetAxis ("JoystickLookLeftRight") / (Mathf.Abs (Input.GetAxis ("JoystickLookLeftRight")) + 8f);
 			initialTurn -= tempJoystick;
@@ -336,25 +385,24 @@ public class PlayerMovement : MonoBehaviour
 
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
-
-		if (Input.GetButton("UnJump")) {
-			rigidBody.velocity = new Vector3(rigidBody.velocity.x, -Mathf.Abs(rigidBody.velocity.y), rigidBody.velocity.z);
-		}
-
+		
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
-			if (packets > 0) {
-				if (!particlesystem.isPlaying) particlesystem.Play ();
-				particlesystem.Emit(1);
+			if ((packets > 0) && (freezeTime == false)) {
+				//we can't fire packets unless the timer is moving and there are packets left to fire
+				if (!particlesystem.isPlaying)
+					particlesystem.Play ();
+				particlesystem.Emit (1);
 				packets -= 1;
 			}
 		}
 		//this too can be fired by either system with no problem
 
 		if (Input.GetAxisRaw ("ScrollWheel") != 0.0) {
-			mouseSensitivity += (Input.GetAxisRaw ("ScrollWheel")*10f);
-			if (mouseSensitivity < 100f) mouseSensitivity = 100f;
-			countdownTextObj.text = string.Format ("mouse sensitivity {0:0.}", mouseSensitivity/10f);
+			mouseSensitivity += (Input.GetAxisRaw ("ScrollWheel") * 10f);
+			if (mouseSensitivity < 100f)
+				mouseSensitivity = 100f;
+			countdownTextObj.text = string.Format ("mouse sensitivity {0:0.}", mouseSensitivity / 10f);
 		}
 		
 
@@ -369,15 +417,16 @@ public class PlayerMovement : MonoBehaviour
 
 
 		pingTimer += 1;
-		if (pingTimer > yourMatchDistance) pingTimer = 0;
+		if (pingTimer > yourMatchDistance)
+			pingTimer = 0;
 
 		if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
 			//we are playing the smashing sounds of the giant guardians
 		} else {
 			audiosource.pitch = 3f / ((pingTimer + 64f) / 65f);
 			if (pingTimer == 0) {
-				if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
-					float pingVolume = 1f / Mathf.Sqrt(yourMatchDistance);
+				if ((ourlevel.GetComponent<SetUpBots> ().gameEnded == false) && (freezeTime == false)) {
+					float pingVolume = 1f / Mathf.Sqrt (yourMatchDistance);
 					if (audiosource.clip != botBeep)
 						audiosource.clip = botBeep;
 					if (yourMatchOccluded) {
@@ -453,11 +502,14 @@ public class PlayerMovement : MonoBehaviour
 			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt(Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity)+4f+mouseDrag) * 0.1f;
+		float momentum = Mathf.Sqrt (Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity) + 4f + mouseDrag) * 0.1f;
 		//4 controls the top speed, 0.1 controls maximum clamp when turning
-		if (momentum < 0.001f) momentum = 0.001f; //insanity check
-		if (momentum > adjacentSolid) momentum = adjacentSolid; //insanity check
-		if (adjacentSolid < 1f) adjacentSolid = 1f; //insanity check
+		if (momentum < 0.001f)
+			momentum = 0.001f; //insanity check
+		if (momentum > adjacentSolid)
+			momentum = adjacentSolid; //insanity check
+		if (adjacentSolid < 1f)
+			adjacentSolid = 1f; //insanity check
 		desiredMove /= (adjacentSolid + mouseDrag);
 		//we're adding the move to the extent that we're near a surface
 		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
@@ -489,15 +541,14 @@ public class PlayerMovement : MonoBehaviour
 			transform.position = lastPlayerPosition;
 			rigidBody.velocity = Vector3.zero;
 			endPosition = startPosition;
-		}
- 		else lastPlayerPosition = transform.position;
+		} else
+			lastPlayerPosition = transform.position;
 		//insanity check: if for any reason we've moved faster than 5 world units per tick, the dreaded geometry glitch has struck
 		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
 	}
 
-
-
-	IEnumerator SlowUpdates () {
+	IEnumerator SlowUpdates ()
+	{
 		while (true) {
 			if (transform.position.x < 0f) {
 				if (Vector3.Distance (transform.position, guardian.transform.position) < 600f) {
@@ -546,7 +597,7 @@ public class PlayerMovement : MonoBehaviour
 		
 			yield return playerWait;
 
-			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 2f) + (initialUpDown*4f) + (playerPosition.y/200f);
+			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 2f) + (initialUpDown * 4f) + (playerPosition.y / 200f);
 			//elaborate zoom goes wide angle for looking up, and for high ground
 
 			if (altitude < 1f) {
@@ -628,7 +679,7 @@ public class PlayerMovement : MonoBehaviour
 			creepToRange -= (0.01f + (0.0001f * levelNumber));
 			//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
 			if (creepToRange < 1f) {
-				creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
+				creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
 				creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 				//each time, the whole rotation of the 'bot map' is different.
 			}
