@@ -57,7 +57,6 @@ public class BotMovement : MonoBehaviour
 	private SetUpBots setupbots;
 	private GameObject guardianN;
 	private GameObject guardianS;
-	private GameObject logo;
 	private GameObject botZaps;
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
@@ -89,7 +88,6 @@ public class BotMovement : MonoBehaviour
 		//should be pretty cheap to keep references for this stuff around
 		//using this, we can punch a target or chase behavior into a specific guardian,
 		//without it having to go through all the bots when it needs to react to a specific bot.
-		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		withinRange = false;
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
@@ -114,24 +112,14 @@ public class BotMovement : MonoBehaviour
 		if (col.gameObject.tag == "Player" && notEnded) {
 			if ((playermovement.yourMatch == yourMatch) && (setupbots.gameEnded == false)) {
 				if (col.relativeVelocity.magnitude > 40f) {
-					myColor.material.color = new Color (0.35f, 0.35f, 0.35f);
-					sphereCollider.material.staticFriction = 0.2f;
-					Destroy (this);
-					//REKKT. Bot's brain is destroyed and since it was your soulmate...
-					ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
-					ourheroRigidbody.freezeRotation = false;
-					ourheroRigidbody.angularDrag = 0.6f;
-					setupbots.gameEnded = true;
-					setupbots.killed = true;
-					Destroy (playermovement);
-					logo.GetComponent<Text> ().text = "Game Over";
-					//you are REKKT too!
 					audioSource.clip = BotCrashTinkle;
 					audioSource.reverbZoneMix = 0f;
 					audioSource.pitch = 0.08f;
 					audioSource.volume = 1f;
 					audioSource.Play ();
 					//override with an epic fail crash
+					//This is your counterpart getting hit in case we have a relevant thing to do here
+					//even if it's just not registering the win: too fast!
 				} else {
 					if (playermovement.freezeTime == false) {
 						//only available if the timer is going. Otherwise you cannot connect with your counterpart
@@ -174,12 +162,11 @@ public class BotMovement : MonoBehaviour
 						PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
 						PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
 						PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
-						PlayerPrefs.SetFloat ("guardianHostility", PlayerMovement.guardianHostility);
 						PlayerPrefs.SetFloat ("mouseSensitivity", playermovement.mouseSensitivity);
 						playermovement.locationOfCounterpart = Vector3.zero;
 						//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
 						playermovement.maxbotsTextObj.text = string.Format ("high score:{0:0.}", PlayerMovement.playerScore);
-						playermovement.countdownTextObj.text = "safe! press e for next level or quit here to continue later";
+						playermovement.countdownTextObj.text = "found it! press e for next level or quit here to continue later";
 						PlayerMovement.countdown = 0;
 						PlayerPrefs.Save ();
 					}
@@ -190,6 +177,7 @@ public class BotMovement : MonoBehaviour
 					playermovement.timeBetweenGuardians = 1f;
 					playermovement.dollyOffset = col.relativeVelocity.magnitude / 200f;
 					//hitting a bot knocks your viewpoint
+
 					//you bonked a bot so the guardian will get between you
 					overThere = Vector3.zero;
 					//you pissed it off and it won't help you until you re-ask
@@ -201,35 +189,23 @@ public class BotMovement : MonoBehaviour
 					audioSource.reverbZoneMix = 0f;
 					audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 					audioSource.volume = 0.5f;
-					PlayerMovement.guardianHostility += (ourheroRigidbody.velocity.magnitude * 0.001f);
-					if (PlayerMovement.guardianHostility > 0.5f)
-						PlayerMovement.guardianHostility = 0.5f;
-					//this covers the cases where we kill bots: relative velocity will be super high then. It also handles when we're just sitting there
 
-					guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (ourheroRigidbody.velocity.magnitude * 0.025f));
-					//lerp value, slowly diminishes. Multiple kills can make a guardian super aggressive. Or if you are super speeding
-					guardianNmovement.locationTarget = transform.position;
-					//whether or not we killed the other bot, we are going to trigger the guardian
-
-					if ((col.relativeVelocity.magnitude > 40f) && (setupbots.gameEnded == false)) {
-						//if you've won the game you can't kill bots, it would lack class
+					if (col.relativeVelocity.magnitude > 40f) {
 						audioSource.clip = BotCrashTinkle;
 						audioSource.reverbZoneMix = 0f;
 						audioSource.pitch = 1.0f - ((col.relativeVelocity.magnitude) * 0.0005f);
 						if (audioSource.pitch < 0.2f)
 							audioSource.pitch = 0.2f;
 						audioSource.volume = 1f;
-						if (playermovement.yourMatch != yourMatch) {
-							myColor.material.color = new Color (0.3f, 0.3f, 0.3f);
-							sphereCollider.material.staticFriction = 0.2f;
-							rigidBody.freezeRotation = false;
-							rigidBody.angularDrag = 0.5f;
-							Destroy (this);
-							//REKKT. Bot's brain is destroyed, after setting its color to dim.
-							//Exception, you can hit your counterpart as hard as you like! :D
-							playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
-						}//when over 40, decide if you kill entire game or just the other bot.
-					}//also over 25
+						//hard crash makes crashtinkle, but to no effect. This is where to add 'make the bot scared of you now'
+						playermovement.timeBetweenGuardians = 1f;
+						//reset the guardian sensitivity
+						guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
+						//lerp value, slowly diminishes. Inter-bot hits can't make the guardian target you
+						guardianNmovement.locationTarget = transform.position;
+						//whether or not we killed the other bot, we are going to trigger the guardian
+
+					}
 					audioSource.Play ();
 					//play if over 15 or more
 				} else {
@@ -604,19 +580,6 @@ public class BotMovement : MonoBehaviour
 			if (distance < 25) {
 				meshfilter.mesh = meshLOD0;
 				withinRange = true;
-				int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
-				int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
-				int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
-				if ((left + right + center) < (25 - distance)) {
-					if (notEnded && playermovement.packets < 1) {
-						botZaps.transform.position = Vector3.MoveTowards (transform.position, ourhero.transform.position, 1.1f);
-						botZaps.transform.LookAt (ourhero.transform.position);
-						botZapsParticles.startSize = 4f;
-						botZapsParticles.Emit (1);
-						botTarget = ourhero.transform.position;
-						//if you have no packets, bots will zap you some if you're close.
-					}
-				}
 			} else {
 				if (distance < 50) {
 					meshfilter.mesh = meshLOD1;

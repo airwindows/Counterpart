@@ -88,16 +88,24 @@ public class GuardianMovement : MonoBehaviour {
 			}
 			//player is unkillable if they've already won
 		}
-
-
 	} //entire collision
+
+
+	void OnParticleCollision (GameObject shotBy)
+	{
+		guardianCooldown = 7f;
+		if (shotBy.CompareTag ("playerPackets")) {
+			locationTarget = ourhero.transform.position;
+		}
+	}
+
 	
 	void FixedUpdate () {
-		churnCoreVisuals -= (0.01f + (guardianCooldown * 0.001f));
+		churnCoreVisuals -= (0.001f + (guardianCooldown * 0.001f));
 		if (churnCoreVisuals < 0f) churnCoreVisuals += 1f;
-		churnMiddleVisuals -= (0.012f + (guardianCooldown * 0.001f));
+		churnMiddleVisuals -= (0.0012f + (guardianCooldown * 0.001f));
 		if (churnMiddleVisuals < 0f) churnMiddleVisuals += 1f;
-		churnSurfaceVisuals -= (0.014f + (guardianCooldown * 0.001f));
+		churnSurfaceVisuals -= (0.0014f + (guardianCooldown * 0.001f));
 		if (churnSurfaceVisuals < 0f) churnSurfaceVisuals += 1f;
 		//the churning activity gets more intense as the thing animates
 
@@ -105,7 +113,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.04f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.05f + (guardianCooldown * guardianCooldown * 0.02f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
 		guardianSurface.SetColor("_TintColor", guardianGlow);
@@ -114,7 +122,6 @@ public class GuardianMovement : MonoBehaviour {
 
 	IEnumerator SlowUpdates () {
 		while (true) {
-			locationTarget = Vector3.Lerp (locationTarget, ourhero.transform.position, PlayerMovement.guardianHostility);
 			if (guardianCooldown > 1)
 				guardianCooldown = Mathf.Lerp (guardianCooldown, Mathf.Sqrt (guardianCooldown), 0.01f);
 			//this ought to make it go for the player pretty hard if they kill bots.
@@ -124,9 +131,9 @@ public class GuardianMovement : MonoBehaviour {
 			Vector3 rawMove = locationTarget - transform.position;
 			rawMove = rawMove.normalized * 200f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
-			guardianCooldown -= (0.05f / myRigidbody.velocity.magnitude);
+			guardianCooldown -= (0.1f / myRigidbody.velocity.magnitude);
 			//rapidly cool off if it's holding position over a bot, not so much when chasing
-			if (guardianCooldown > 4f) guardianCooldown = 4f;
+			if (guardianCooldown > 6f) guardianCooldown = 6f;
 			//safeguard against crazy psycho zapping around
 
 			if (guardianCooldown < 0f) {
@@ -141,12 +148,14 @@ public class GuardianMovement : MonoBehaviour {
 			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 			audiosource.pitch = pitch;
 			audiosource.priority = 4;
-			audiosource.volume = Mathf.Lerp (audiosource.volume, 0.3f + guardianCooldown, 0.001f + (guardianCooldown * 0.1f));
-			//ramp up fast but switch off more slowly.
+			float targetVolume = 0.3f;
 			if (Physics.Linecast (transform.position, ourhero.transform.position))
-				audiosource.volume = 0.2f + (guardianCooldown);
+				targetVolume = 0.2f;
 			if (setupbots.gameEnded == true)
-				audiosource.volume = 0f;
+				targetVolume = 0f;
+
+			audiosource.volume = Mathf.Lerp (audiosource.volume, targetVolume + guardianCooldown, 0.0001f + (guardianCooldown * 0.001f));
+			//ramp up fast but switch off more slowly.
 
 			yield return guardianWait;
 		}

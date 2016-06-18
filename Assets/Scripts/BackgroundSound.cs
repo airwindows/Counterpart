@@ -271,11 +271,11 @@ public class BackgroundSound : MonoBehaviour
 			noiseB += (outputWhoosh * whoosh);
 
 
-			if (data[i] > 0) data [i] = Mathf.Sin(data[i] + (float)noiseB);
+			if (data[i] > 0) data [i] = Mathf.Sin((data[i]*4) + (float)noiseB);
 			else data [i] = -Mathf.Sin(-data[i] - (float)noiseB);
 
 			if (channels == 2){
-				if (data[i+1] > 0) data [i+1] = Mathf.Sin(data[i+1] + (float)noiseB);
+				if (data[i+1] > 0) data [i+1] = Mathf.Sin((data[i+1]*4) + (float)noiseB);
 				else data [i+1] = -Mathf.Sin(-data[i+1] - (float)noiseB);
 			}
 		}

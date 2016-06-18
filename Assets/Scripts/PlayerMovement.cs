@@ -18,7 +18,6 @@ public class PlayerMovement : MonoBehaviour
 	public static int maxlevelNumber;
 	public static int playerScore;
 	public static int usingController;
-	public static float guardianHostility;
 	public static Vector3 playerPosition = new Vector3 (1610f, 2000f, 2083f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
@@ -86,21 +85,19 @@ public class PlayerMovement : MonoBehaviour
 	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
 	public float creepRotAngle = 1f;
-	public float skyboxRot = 0f;
-	public float skyboxRot2 = 0f;
 	private float velCompensated = 0.00025f;
 	private Vector3 positionOffset = new Vector3 (40f, -40f, 0f);
 	private GameObject level;
 	private SetUpBots setupbots;
-	private GameObject packetmeter;
-	private RectTransform packetdisplay;
-	private GameObject speedmeter;
-	private RectTransform speeddisplay;
+	//private GameObject packetmeter;
+	//private RectTransform packetdisplay;
+	//private GameObject speedmeter;
+	//private RectTransform speeddisplay;
 	public int packetDisplayIncrement = 0;
-	public int packets = 1000;
-	private int lastpackets = 1;
-	public int speed = 0;
-	private int lastspeed = 1;
+	//public int packets = 1000;
+	//private int lastpackets = 1;
+	//public int speed = 0;
+	//private int lastspeed = 1;
 	public Texture2D colorBits;
 	public CanvasRenderer colorDisplay;
 	private bool notStartedColorBitsScreen;
@@ -138,11 +135,11 @@ public class PlayerMovement : MonoBehaviour
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		level = GameObject.FindGameObjectWithTag ("Level");
-		packetmeter = GameObject.FindGameObjectWithTag ("packets");
-		packetdisplay = packetmeter.GetComponent<RectTransform> ();
-		packets = 1000;
-		speedmeter = GameObject.FindGameObjectWithTag ("speed");
-		speeddisplay = speedmeter.GetComponent<RectTransform> ();
+		//packetmeter = GameObject.FindGameObjectWithTag ("packets");
+		//packetdisplay = packetmeter.GetComponent<RectTransform> ();
+		//packets = 1000;
+		//speedmeter = GameObject.FindGameObjectWithTag ("speed");
+		//speeddisplay = speedmeter.GetComponent<RectTransform> ();
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		freezeTime = false;
@@ -151,8 +148,10 @@ public class PlayerMovement : MonoBehaviour
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
-		guardianHostility = PlayerPrefs.GetFloat ("guardianHostility", 0f);
 		mouseSensitivity = PlayerPrefs.GetFloat ("mouseSensitivity", 300f);
+
+		//levelNumber = maxlevelNumber = 992;
+		//test at high levels switch
 	}
 
 	void Start ()
@@ -171,16 +170,26 @@ public class PlayerMovement : MonoBehaviour
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
-		//somewhat randomized but still in the area of what's set
-		creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+		//creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
+		//creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+
+		int residueSequence = (int)Mathf.Pow (levelNumber, 2);
+
+		creepToRange = (residueSequence % 1800)+80;
+		if (creepToRange > levelNumber * 2f)
+			creepToRange = levelNumber * 2f;
+		//restrict range to local at lower levels
+		creepRotAngle = (residueSequence % 359);
+
+		//creepToRange = 80;
+
+
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		maxbotsTextObj.text = string.Format ("high score:{0:0.}", playerScore);
 		countdown = 20 + (int)(Math.Sqrt (levelNumber) * 50f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
 		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
-		packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
 		colorBits.Apply ();
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
@@ -197,17 +206,6 @@ public class PlayerMovement : MonoBehaviour
 			PlayerPrefs.Save ();
 			//if we are quitting, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
-		}
-	}
-
-	void OnParticleCollision (GameObject shotBy)
-	{
-		if (shotBy.CompareTag ("Line")) {
-			packets = (int)Mathf.Lerp (packets, 1000f, 0.1f);
-			//anytime you get hit with a zap, it powers you up
-			//but only if it's BotZaps that fired the zap
-			//it's tagged with "Line"
-			//it's also more efficient as bots no longer target you for zaps
 		}
 	}
 
@@ -388,13 +386,9 @@ public class PlayerMovement : MonoBehaviour
 		
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
 		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
-			if ((packets > 0) && (freezeTime == false)) {
-				//we can't fire packets unless the timer is moving and there are packets left to fire
-				if (!particlesystem.isPlaying)
-					particlesystem.Play ();
-				particlesystem.Emit (1);
-				packets -= 1;
-			}
+			if (!particlesystem.isPlaying)
+				particlesystem.Play ();
+			particlesystem.Emit (1);
 		}
 		//this too can be fired by either system with no problem
 
@@ -584,16 +578,6 @@ public class PlayerMovement : MonoBehaviour
 			timeBetweenGuardians *= 0.999f;
 			//with this factor we scale how sensitive guardians are to bots bumping each other
 
-			if (lastpackets != packets) {
-				lastpackets = packets;
-				packetdisplay.sizeDelta = new Vector2 (35f, (packets / 1000f) * (Screen.height - 24f));
-			}
-			speed = (int)(rigidBody.velocity.magnitude * 7f);
-			if (lastspeed != speed) {
-				lastspeed = speed;
-				speeddisplay.sizeDelta = new Vector2 (35f, 135f + ((speed / 1000f) * Screen.height));
-			}
-			//updating the meters needn't be 60fps and up
 		
 			yield return playerWait;
 
@@ -602,14 +586,14 @@ public class PlayerMovement : MonoBehaviour
 
 			if (altitude < 1f) {
 				backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
-				backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000008f);
+				backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.00001f);
 			} else {
 				backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
 				backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.000005f);
 			}
 
 			if (botNumber < totalBotNumber) {
-				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
 			} //generate a bot if we don't have 500 and our FPS is at least 50. Works for locked framerate too as that's bound to 60
 			//uses totalBotNumber because if we start killing them, the top number goes down!
 
@@ -637,10 +621,10 @@ public class PlayerMovement : MonoBehaviour
 			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			float recip = 1.0f / backgroundSound.gain;
 			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
-			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 12.0f));
+			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 10.0f));
 
 			if (botNumber < totalBotNumber) {
-				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
 			} //generate a bot if we don't have 500 and our FPS is at least 30. Works for locked framerate too as that's bound to 60
 
 			yield return playerWait;
@@ -655,15 +639,6 @@ public class PlayerMovement : MonoBehaviour
 			}
 			///walls! We bounce off the four walls of the world rather than falling out of it
 
-			skyboxRot -= 0.08f;
-			if (skyboxRot < 0f)
-				skyboxRot += 360f;
-			overlayBoxMat.SetFloat ("_Rotation", skyboxRot);
-			skyboxRot2 += 0.06f;
-			if (skyboxRot > 360f)
-				skyboxRot -= 360f;
-			overlayBoxMat2.SetFloat ("_Rotation", skyboxRot2);
-			//try to rotate the skybox
 			skyboxCamera.fieldOfView = baseFOV + cameraZoom;
 
 			backgroundSound.gain = 1.0f / recip;
@@ -676,17 +651,18 @@ public class PlayerMovement : MonoBehaviour
 
 			deltaTime += (Time.deltaTime - deltaTime) * 0.01f;
 					
-			creepToRange -= (0.01f + (0.0001f * levelNumber));
+			//creepToRange -= (0.01f + (0.0001f * levelNumber));
 			//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
-			if (creepToRange < 1f) {
-				creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
-				creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+			//if (creepToRange < 1f) {
+			//	creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
+			//	creepRotAngle = UnityEngine.Random.Range (0f, 359f);
 				//each time, the whole rotation of the 'bot map' is different.
-			}
+			//}
 			//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
+			//removed so that we can have a strange and unpredictable problem set based on residue sequences of the level number
 
 			if (botNumber < totalBotNumber) {
-				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1, false);
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
 			} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
 			//uses totalBotNumber because if we start killing them, the top number goes down!
 			//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug

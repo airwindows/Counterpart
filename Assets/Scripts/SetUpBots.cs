@@ -16,8 +16,9 @@ public class SetUpBots : MonoBehaviour {
 	private float spacing;
 	private float degrees;
 	private Vector3 spawnLocationA;
-	private Vector3 spawnLocationB;
-	private Vector3 centerLocation;
+	//private Vector3 spawnLocationB;
+	//private Vector3 centerLocation;
+	//private LayerMask onlyTerrains;
 
 
 	//Texture array must be set up in the editor as LoadAll no worky
@@ -29,6 +30,8 @@ public class SetUpBots : MonoBehaviour {
 		botParent = GameObject.FindGameObjectWithTag ("AllBots");
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
+		//onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
+
 	}
 	
 	void Start () {
@@ -39,7 +42,7 @@ public class SetUpBots : MonoBehaviour {
 		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, terrainHeight, 4000f);
 		//must be after Awake so we can get the level number in Player
 
-		centerLocation = new Vector3 (1614f, 9f, 2083f);
+		//centerLocation = new Vector3 (1614f, 9f, 2083f);
 		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
 		if (Physics.Raycast (PlayerMovement.playerPosition, Vector3.down, out hit)) PlayerMovement.playerPosition = hit.point + Vector3.up;
 		playermovement.transform.position = PlayerMovement.playerPosition;
@@ -53,7 +56,8 @@ public class SetUpBots : MonoBehaviour {
 		//if they're spawned through the extra-bot-spawn mechanics
 
 		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		playermovement.creepToRange = Mathf.Sqrt(PlayerMovement.levelNumber) * 20f;
+		int residueSequence = (int)Mathf.Pow (PlayerMovement.levelNumber, 3);
+		playermovement.creepToRange = (residueSequence % 1800)+80;
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);
@@ -65,21 +69,21 @@ public class SetUpBots : MonoBehaviour {
 		playermovement.ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);
 		//we have now established that you are a particular bot
 
-		SpawnBot (yourMatch, true);
+		SpawnBot (yourMatch);
 		//and we spawn your counterpart.
 
 		//Now, anything else is random
 		
 		for (int i = 0; i < randBots; i++) {
 			if (i != yourMatch) {
-				SpawnBot (i, false);
+				SpawnBot (i);
 			}
 		}
 		//we generate one of every bot, to start off with, skipping the counterpart that we've just explicitly made.
 		//The rest will be generated on the fly by the program, until it hits framerate and can't maintain 60fps.
 	}
 	
-	public void SpawnBot(int index, bool onEdge)
+	public void SpawnBot(int index)
 	{    
 		GameObject myBot;
 		GameObject myDolly;
@@ -110,28 +114,48 @@ public class SetUpBots : MonoBehaviour {
 
 		int step = Random.Range(0,botmovement.botBrain.Length); //let's try having them all very scattered, unless they begin to meet
 
-		spacing = Random.Range (playermovement.creepToRange / 3f, playermovement.creepToRange);
-		degrees = Random.Range (0f, 360f);
-		spawnLocationA = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
-		spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
-		degrees = Random.Range (0f, 360f);
-		spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+
+		//spacing = Random.Range (playermovement.creepToRange / 3f, playermovement.creepToRange);
+		//degrees = Random.Range (0f, 360f);
+		//spawnLocationA = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
+		//spacing = Random.Range (playermovement.creepToRange / 2f, playermovement.creepToRange);
+		//degrees = Random.Range (0f, 360f);
+		//spawnLocationB = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * degrees) * spacing), 99999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * degrees) * spacing));
 		//two different locations, increasingly weighted towards the farthest reaches of creepToRange, mean that bots will tend to be scattered but
 		//can still turn up very local to the player
+		//if (Vector3.Distance(centerLocation, spawnLocationB) < Vector3.Distance(centerLocation, spawnLocationA)) spawnLocationA = spawnLocationB;
+		//original random spawn behavior
 
-		if (Vector3.Distance(centerLocation, spawnLocationB) < Vector3.Distance(centerLocation, spawnLocationA)) spawnLocationA = spawnLocationB;
+		int brainR = botmovement.botBrain [step].r;
+		int brainG = botmovement.botBrain [step].g;
+		int brainB = botmovement.botBrain [step].b;
 
-		if (Physics.Raycast (spawnLocationA, Vector3.down, out hit)) {
-			spawnLocationA = hit.point + Vector3.up;
+		Color c = new Color (brainR, brainG, brainB);
+		HSLColor color = HSLColor.FromRGBA (c);
+		//this is giving us 360 degree hue, and then saturation and luminance.
+		float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
+		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
+		Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+		//aim bot at target
+
+		if (Physics.Raycast (spawnLocation, Vector3.down, out hit, 99999f))
+			spawnLocation = hit.point + Vector3.up;
+
+		//if (Physics.Raycast (spawnLocationA, Vector3.down, out hit)) {
+		//	spawnLocationA = hit.point + Vector3.up;
 			//if there's a terrain and we're not too far, spawn bot
-		}
-		else {
-			if (index != yourMatch) Destroy (myBot.transform.gameObject);
-			else spawnLocationA = hit.point + Vector3.up;
+		//}
+		//else {
+		//	if (index != yourMatch) Destroy (myBot.transform.gameObject);
+		//	else spawnLocationA = hit.point + Vector3.up;
 			//exception: if it's the counterpart, spawn anyway, it won't be culled
-		}
-		myBot.transform.position = spawnLocationA;
-		botmovement.botTarget = spawnLocationA;
+		//}
+
+
+
+
+		myBot.transform.position = spawnLocation;
+		botmovement.botTarget = spawnLocation;
 		botmovement.step = step;
 		botmovement.brainPointer = step;
 		botmovement.jumpCounter = step;

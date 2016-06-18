@@ -40,7 +40,7 @@ Material:
         first:
           name: _Tex
         second:
-          m_Texture: {fileID: 8900000, guid: 6d837fb9ce0ed450a815f1451d12e0bc, type: 2}
+          m_Texture: {fileID: 8900000, guid: 89c219fca79504fbab82c6f9103ad095, type: 2}
           m_Scale: {x: 1, y: 1}
           m_Offset: {x: 0, y: 0}
       data:
@@ -190,11 +190,11 @@ Material:
         second: 0
       data:
         first:
-          name: _EmissionScaleUI
+          name: _Rotation
         second: 0
       data:
         first:
-          name: _Rotation
+          name: _EmissionScaleUI
         second: 0
     m_Colors:
       data:
@@ -215,9 +215,9 @@ Material:
         second: {r: .117647059, g: .0549019612, b: .31764707, a: 1}
       data:
         first:
-          name: _EmissionColorUI
-        second: {r: 1, g: 1, b: 1, a: 1}
-      data:
-        first:
           name: _Tint
         second: {r: .433823526, g: .433823526, b: .433823526, a: 0}
+      data:
+        first:
+          name: _EmissionColorUI
+        second: {r: 1, g: 1, b: 1, a: 1}
