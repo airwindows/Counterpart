@@ -122,10 +122,9 @@ public class GuardianMovement : MonoBehaviour {
 
 	IEnumerator SlowUpdates () {
 		while (true) {
-			if (guardianCooldown > 1)
-				guardianCooldown = Mathf.Lerp (guardianCooldown, Mathf.Sqrt (guardianCooldown), 0.01f);
-			//this ought to make it go for the player pretty hard if they kill bots.
-			//otherwise, it just goes to the source of the altercation which might include you.
+			if (guardianCooldown > 3f)
+				guardianCooldown -= 0.1f;
+			//alternate way to deal with hyper guardians?
 			yield return guardianWait;
 
 			Vector3 rawMove = locationTarget - transform.position;
@@ -148,9 +147,11 @@ public class GuardianMovement : MonoBehaviour {
 			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 			audiosource.pitch = pitch;
 			audiosource.priority = 4;
-			float targetVolume = 0.3f;
-			if (Physics.Linecast (transform.position, ourhero.transform.position))
-				targetVolume = 0.2f;
+			float targetVolume = 0.2f;
+			if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false) {
+				//returns true if there's anything in the way. false means line of sight.
+				targetVolume = 0.3f;
+			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;
 

@@ -38,7 +38,7 @@ public class SetUpBots : MonoBehaviour {
 		RaycastHit hit;
 		gameEnded = false;
 		killed = false;
-		float terrainHeight = 20f + Mathf.Sqrt (PlayerMovement.levelNumber * 20) + ((PlayerMovement.levelNumber * PlayerMovement.levelNumber) / 9999f);
+		float terrainHeight = 100f + ((PlayerMovement.levelNumber * PlayerMovement.levelNumber) / 999f);
 		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (4000f, terrainHeight, 4000f);
 		//must be after Awake so we can get the level number in Player
 
@@ -55,9 +55,10 @@ public class SetUpBots : MonoBehaviour {
 		//so if we're on level 2, you're always one of the first 2, though additional ones could be anything
 		//if they're spawned through the extra-bot-spawn mechanics
 
-		playermovement.totalBotNumber = PlayerMovement.levelNumber;
-		int residueSequence = (int)Mathf.Pow (PlayerMovement.levelNumber, 3);
-		playermovement.creepToRange = (residueSequence % 1800)+80;
+		//playermovement.totalBotNumber = PlayerMovement.levelNumber;
+		//int residueSequence = (int)Mathf.Pow (PlayerMovement.levelNumber, 3);
+		//playermovement.creepToRange = (residueSequence % 1800)+80;
+
 		//we'll have the bot range clamped
 
 		yourMatch = Random.Range(0, randBots);

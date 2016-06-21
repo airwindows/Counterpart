@@ -23,6 +23,7 @@ TagManager:
   - playerPackets
   - speed
   - fpsmeter
+  - instructionScreen
   layers:
   - Default
   - TransparentFX

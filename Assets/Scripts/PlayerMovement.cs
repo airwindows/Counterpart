@@ -86,25 +86,20 @@ public class PlayerMovement : MonoBehaviour
 	public float creepToRange;
 	public float creepRotAngle = 1f;
 	private float velCompensated = 0.00025f;
-	private Vector3 positionOffset = new Vector3 (40f, -40f, 0f);
+	private Vector3 positionOffset = new Vector3 (20f, -20f, 0f);
 	private GameObject level;
 	private SetUpBots setupbots;
-	//private GameObject packetmeter;
-	//private RectTransform packetdisplay;
-	//private GameObject speedmeter;
-	//private RectTransform speeddisplay;
 	public int packetDisplayIncrement = 0;
-	//public int packets = 1000;
-	//private int lastpackets = 1;
-	//public int speed = 0;
-	//private int lastspeed = 1;
+	public int adjustedLieThreshold;
 	public Texture2D colorBits;
 	public CanvasRenderer colorDisplay;
 	private bool notStartedColorBitsScreen;
 	public Renderer ourbody;
 	private bool supportsRenderTextures;
 	public bool freezeTime;
-	private bool enableFreezeButton;
+	public bool showInstructions;
+	private int instructionsPlacement;
+	private GameObject instructionScreen;
 	WaitForSeconds playerWait = new WaitForSeconds (0.015f);
 
 	void Awake ()
@@ -117,6 +112,13 @@ public class PlayerMovement : MonoBehaviour
 		//stuff bolted onto the player is always most important
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
+
+		instructionScreen = GameObject.FindGameObjectWithTag ("instructionScreen").gameObject;
+		showInstructions = false;
+		instructionsPlacement = Screen.height;
+		instructionScreen.transform.localPosition = new Vector3(-560, instructionsPlacement, 0);
+		//promptly get that instructions screen out of sight
+
 		ourbody = transform.FindChild ("PlayerBody").GetComponent<Renderer> ();
 
 		colorBits = new Texture2D (24, 2, TextureFormat.ARGB32, false);
@@ -135,23 +137,34 @@ public class PlayerMovement : MonoBehaviour
 		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		level = GameObject.FindGameObjectWithTag ("Level");
-		//packetmeter = GameObject.FindGameObjectWithTag ("packets");
-		//packetdisplay = packetmeter.GetComponent<RectTransform> ();
-		//packets = 1000;
-		//speedmeter = GameObject.FindGameObjectWithTag ("speed");
-		//speeddisplay = speedmeter.GetComponent<RectTransform> ();
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
-		freezeTime = false;
-		enableFreezeButton = true;
+		freezeTime = true;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxlevelNumber", 2);
 		playerScore = PlayerPrefs.GetInt ("playerScore", 0);
 		usingController = PlayerPrefs.GetInt ("usingController", 0);
 		mouseSensitivity = PlayerPrefs.GetFloat ("mouseSensitivity", 300f);
 
+		botNumber = levelNumber;
+		totalBotNumber = levelNumber;
+
+		adjustedLieThreshold = 300 - (int)Math.Sqrt(levelNumber);
+		//this will move the threshold for bots not cooperating (telling you lies) from 256 down to 225 at level 1000
+		//if you could even get level 10000 it will make it 156. At level 65536 nothing helps you at all, ever
+
 		//levelNumber = maxlevelNumber = 992;
 		//test at high levels switch
+		int residueSequence = (int)Mathf.Pow (levelNumber, 3);
+		
+		//creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
+		//creepRotAngle = UnityEngine.Random.Range (0f, 359f);
+		creepToRange = (residueSequence % (PlayerMovement.levelNumber+10))+10;
+		//restrict range to local at lower levels
+		creepRotAngle = (residueSequence % 359);
+		
+		//creepToRange = 80;
+		
 	}
 
 	void Start ()
@@ -164,32 +177,19 @@ public class PlayerMovement : MonoBehaviour
 		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
-		botNumber = levelNumber;
-		totalBotNumber = levelNumber;
 		dollyOffset = 8f / levelNumber;
 		maxbotsTextObj = maxbotsText.GetComponent<Text> ();
 		countdownTextObj = countdownText.GetComponent<Text> ();
 		//start off with the full amount and no meter updating
-		//creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
-		//creepRotAngle = UnityEngine.Random.Range (0f, 359f);
-
-		int residueSequence = (int)Mathf.Pow (levelNumber, 2);
-
-		creepToRange = (residueSequence % 1800)+80;
-		if (creepToRange > levelNumber * 2f)
-			creepToRange = levelNumber * 2f;
-		//restrict range to local at lower levels
-		creepRotAngle = (residueSequence % 359);
-
-		//creepToRange = 80;
 
 
 		guardianmovement.locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 2000f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
-		maxbotsTextObj.text = string.Format ("high score:{0:0.}", playerScore);
-		countdown = 20 + (int)(Math.Sqrt (levelNumber) * 50f); // scales to size but gets very hard to push. Giving too much time gets us into the 'CPUbound' zone too easy
-		countdownTextObj.text = string.Format ("{0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
+		maxbotsTextObj.text = string.Format ("bots:{0:0.}", playerScore);
+		countdown = 300;
+		//countdown is always five minutes, at full sonar
+		countdownTextObj.text = string.Format ("{0:0.}s", countdown);
 		colorBits.Apply ();
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
@@ -289,34 +289,40 @@ public class PlayerMovement : MonoBehaviour
 		if (dollyOffset < 0f)
 			dollyOffset = 0f;
 
+		if (Input.GetButton ("Instructions") && instructionsPlacement > -300) {
+			instructionsPlacement = (int)((instructionsPlacement + 300) * 0.8)-300;
+			instructionScreen.transform.localPosition = new Vector3(-560, instructionsPlacement, 0);
+		}
+		//drop in that screen if needed
+		if (!Input.GetButton ("Instructions") && instructionsPlacement < Screen.height) {
+			instructionsPlacement = (int)((instructionsPlacement - Screen.height) * 0.9)+Screen.height;
+			instructionScreen.transform.localPosition = new Vector3(-560, instructionsPlacement, 0);
+		}
+		//lift out that screen if needed
+		
+
+
 		countdownTicker -= 1;
 		if (countdownTicker < 1) {
-			enableFreezeButton = true;
 			countdownTicker = 30;
+
+			if (!Input.GetButton ("UnJump"))
+				freezeTime = true;
+			//turn off the geiger every second if needed
+
 			if (setupbots.gameEnded == false) {
 				if (freezeTime == false) {
 					countdown -= 1;
-					if (countdown < 0)
-						countdownTextObj.text = string.Format ("remaining {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
-					else {
-						if (countdown > 60) {
-							countdownTextObj.text = string.Format ("remaining {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
-						} else {
-							countdownTextObj.text = string.Format ("remaining {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
-						}
-					}
+					countdownTextObj.text = string.Format ("sonar ACTIVE {0:0.}s", countdown);
 				} else {
-					if (countdown < 0)
-						countdownTextObj.text = string.Format ("timefreeze {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
-					else {
-						if (countdown > 60) {
-							countdownTextObj.text = string.Format ("timefreeze {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
-						} else {
-							countdownTextObj.text = string.Format ("timefreeze {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
-						}
-					}
+					countdownTextObj.text = string.Format ("sonar remaining {0:0.}s", countdown);
 				}
 			}
+			if (countdown > 0)
+				maxbotsTextObj.text = string.Format ("bots:{0:0.} (+{1:0.})", playerScore, Math.Sqrt(countdown));
+			if (countdown < 0)
+				maxbotsTextObj.text = string.Format ("bots:{0:0.} (-{1:0.})", playerScore, -Math.Sqrt(-countdown));
+			//running total of how many points will be gained or lost
 		}
 		//the timer section: if we're timed play, we run the countdown timer
 		
@@ -324,34 +330,20 @@ public class PlayerMovement : MonoBehaviour
 		if (usingController == 0)
 			input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
 		//keyboard input
-		if (Input.GetButton ("UnJump") && enableFreezeButton == true) {
-			freezeTime = !freezeTime;
-			//handy time toggle. this makes it possible to explore
+		if (Input.GetButton ("UnJump"))
+			freezeTime = false;
+		//hold down q for sonar. this makes it possible to explore
+
+		if (Input.GetButton ("Instructions")) {
+			showInstructions = true;
+			//hold down esc for instructions
 
 			if (freezeTime == false) {
-				if (countdown < 0)
-					countdownTextObj.text = string.Format ("remaining {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
-				else {
-					if (countdown > 60) {
-						countdownTextObj.text = string.Format ("remaining {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
-					} else {
-						countdownTextObj.text = string.Format ("remaining {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
-					}
-				}
+				countdownTextObj.text = string.Format ("sonar ACTIVE {0:0.}s", countdown);
 			} else {
-				if (countdown < 0)
-					countdownTextObj.text = string.Format ("timefreeze {0:0.}s (-{1:0.})", countdown, Mathf.Sqrt (countdown * -10));
-				else {
-					if (countdown > 60) {
-						countdownTextObj.text = string.Format ("timefreeze {0:0.}m (+{1:0.})", countdown / 60, Mathf.Sqrt (countdown * 10));
-					} else {
-						countdownTextObj.text = string.Format ("timefreeze {0:0.}s (+{1:0.})", countdown, Mathf.Sqrt (countdown * 10));
-					}
-				}
+				countdownTextObj.text = string.Format ("sonar remaining {0:0.}s", countdown);
 			}
 			//update the display instantly so the control feels responsive, but don't increment countdown
-			enableFreezeButton = false;
-			//kill the response until there's another second: no insanely fast state-flickering plz
 		}
 
 		if (usingController == 1) {
@@ -575,7 +567,7 @@ public class PlayerMovement : MonoBehaviour
 				Application.LoadLevel ("Scene");
 			}
 
-			timeBetweenGuardians *= 0.999f;
+			timeBetweenGuardians *= 0.997f;
 			//with this factor we scale how sensitive guardians are to bots bumping each other
 
 		
@@ -618,7 +610,7 @@ public class PlayerMovement : MonoBehaviour
 				transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
 				playerPosition = lastPlayerPosition = transform.position;
 			}
-			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
+			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.6f);
 			float recip = 1.0f / backgroundSound.gain;
 			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 10.0f));
@@ -639,7 +631,7 @@ public class PlayerMovement : MonoBehaviour
 			}
 			///walls! We bounce off the four walls of the world rather than falling out of it
 
-			skyboxCamera.fieldOfView = baseFOV + cameraZoom;
+			skyboxCamera.fieldOfView = baseFOV + (cameraZoom * 0.7f);
 
 			backgroundSound.gain = 1.0f / recip;
 
@@ -650,16 +642,6 @@ public class PlayerMovement : MonoBehaviour
 			//with this we can tweak sensitivity to things like bot "activityRange"
 
 			deltaTime += (Time.deltaTime - deltaTime) * 0.01f;
-					
-			//creepToRange -= (0.01f + (0.0001f * levelNumber));
-			//as levels advance, we get the 'bot party' a lot more often and they get busier running into the center and back out
-			//if (creepToRange < 1f) {
-			//	creepToRange = Mathf.Sqrt (PlayerMovement.levelNumber) * 20f;
-			//	creepRotAngle = UnityEngine.Random.Range (0f, 359f);
-				//each time, the whole rotation of the 'bot map' is different.
-			//}
-			//bots cluster closer and closer into a big bot party, until suddenly bam! They all flee to the outskirts. Then they start migrating in again.
-			//removed so that we can have a strange and unpredictable problem set based on residue sequences of the level number
 
 			if (botNumber < totalBotNumber) {
 				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
