@@ -564,7 +564,7 @@ public class BotMovement : MonoBehaviour
 			if (distance < 25) {
 				meshfilter.mesh = meshLOD0;
 				withinRange = true;
-				if (combined > (100 - Math.Sqrt (PlayerMovement.levelNumber)) || smashedByPlayer == true) {
+				if (combined > (150 - Math.Sqrt (PlayerMovement.levelNumber)) || smashedByPlayer == true) {
 					botTarget = transform.position + ((transform.position - ourhero.transform.position) * (combined * PlayerMovement.levelNumber));
 					//run from extreme differentness, or if player smashed us
 				}
@@ -572,7 +572,7 @@ public class BotMovement : MonoBehaviour
 				if (distance < 50) {
 					meshfilter.mesh = meshLOD1;
 					withinRange = false;
-					if ((combined * 10000) < PlayerMovement.levelNumber && playermovement.yourMatch != yourMatch) {
+					if ((combined * 20000) < PlayerMovement.levelNumber && playermovement.yourMatch != yourMatch) {
 						botTarget = transform.position - ((transform.position - ourhero.transform.position) * PlayerMovement.levelNumber);
 						//botparazzi swarm the player. Your counterpart does not.
 					}
