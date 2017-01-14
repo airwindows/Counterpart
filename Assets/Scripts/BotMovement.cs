@@ -122,7 +122,7 @@ public class BotMovement : MonoBehaviour
 				notEnded = false;
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
-				PlayerMovement.levelNumber++;
+				PlayerMovement.levelNumber += (int)Math.Sqrt(PlayerMovement.levelNumber);
 				if (PlayerMovement.levelNumber < 2)
 					PlayerMovement.levelNumber = 2;
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);

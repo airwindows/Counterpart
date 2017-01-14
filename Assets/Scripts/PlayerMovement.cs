@@ -13,7 +13,6 @@ public class PlayerMovement : MonoBehaviour
 	public static int levelNumber;
 	public static int maxlevelNumber;
 	public static int playerScore;
-	public static int usingController;
 	public static Vector3 playerPosition = new Vector3 (403f, 2000f, 521f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
@@ -36,6 +35,8 @@ public class PlayerMovement : MonoBehaviour
 	private int brainPointer;
 	private float altitude = 1f;
 	private Rigidbody rigidBody;
+	private Vector3 startPosition;
+	private Vector3 endPosition;
 	private Vector3 lastPlayerPosition;
 	private float stepsBetween;
 	private LayerMask onlyTerrains;
@@ -118,6 +119,8 @@ public class PlayerMovement : MonoBehaviour
 		if (Physics.Raycast (playerPosition, Vector3.down, out hit))
 			playerPosition = hit.point + Vector3.up;
 		transform.position = playerPosition;
+		startPosition = transform.position;
+		endPosition = transform.position;
 		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
@@ -141,23 +144,22 @@ public class PlayerMovement : MonoBehaviour
 	void Update ()
 	{
 		//Each frame we run Update, regardless of what game control/physics is doing. This is the fundamental 'tick' of the game but it's wildly time-variant: it goes as fast as possible.
+		cameraDolly.transform.localPosition = Vector3.Lerp (startPosition, endPosition, stepsBetween);
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
-		if (usingController == 0) {
-			float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
+		float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
+		mouseDrag = Mathf.Abs (tempMouse);
+		initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxis ("MouseX") * 0.1f));
+		tempMouse = Input.GetAxis ("MouseY") / mouseSensitivity;
+		if (Mathf.Abs (tempMouse) > mouseDrag)
 			mouseDrag = Mathf.Abs (tempMouse);
-			initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxis ("MouseX") * 0.1f));
-			tempMouse = Input.GetAxis ("MouseY") / mouseSensitivity;
-			if (Mathf.Abs (tempMouse) > mouseDrag)
-				mouseDrag = Mathf.Abs (tempMouse);
-			initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxis ("MouseY") * 0.1f));
-			tempMouse = -tempMouse;
-			if (initialTurn < 0f)
-				initialTurn += clampRotateAngle;
-			if (initialTurn > clampRotateAngle)
-				initialTurn -= clampRotateAngle;
-			initialUpDown = Mathf.Clamp (initialUpDown, -1.5f, 1.5f);
-			//mouse is instantaneous so it can be in Update.
-		}
+		initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxis ("MouseY") * 0.1f));
+		tempMouse = -tempMouse;
+		if (initialTurn < 0f)
+			initialTurn += clampRotateAngle;
+		if (initialTurn > clampRotateAngle)
+			initialTurn -= clampRotateAngle;
+		initialUpDown = Mathf.Clamp (initialUpDown, -1.5f, 1.5f);
+		//mouse is instantaneous so it can be in Update.
 
 		if (supportsRenderTextures) {
 			blurHack += 1;
@@ -208,10 +210,10 @@ public class PlayerMovement : MonoBehaviour
 		//For this reason, if framerate is known to be always higher than 50fps, stuff can be put here to help the engine run faster
 		//but if framerate's running low, we are not actually getting a spaced out distribution of frames, only a staggering of them
 		//to allow physics to run correctly.
-		Vector2 input = Vector2.zero;
-		input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
+		Vector2 input = Vector2.zero;
+		input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
 		Vector3 groundContactNormal;
 		Vector3 rawMove = mainCamera.transform.forward * input.y + mainCamera.transform.right * input.x;
 		float adjacentSolid = 99999;
@@ -337,10 +339,14 @@ public class PlayerMovement : MonoBehaviour
 
 		stepsBetween = 0f;
 		//zero out the step-making part and start over
+		startPosition = Vector3.zero;
+		endPosition = rigidBody.velocity * Time.fixedDeltaTime;
+		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
 
 		if (Vector3.Distance (transform.position, lastPlayerPosition) > 5f) {
 			transform.position = lastPlayerPosition;
 			rigidBody.velocity = Vector3.zero;
+			endPosition = startPosition;
 		} else
 			lastPlayerPosition = transform.position;
 		//insanity check: if for any reason we've moved faster than 5 world units per tick, the dreaded geometry glitch has struck
@@ -350,16 +356,6 @@ public class PlayerMovement : MonoBehaviour
 	IEnumerator SlowUpdates ()
 	{
 		while (true) {
-			if (Mathf.Abs (Input.GetAxis ("JoystickLookUpDown")) > 1f)
-				usingController = 1;
-			if (Mathf.Abs (Input.GetAxis ("JoystickMoveForwardBack")) > 1f)
-				usingController = 1;
-			if (Mathf.Abs (Input.GetAxis ("Horizontal")) > 1f)
-				usingController = 0;
-			if (Mathf.Abs (Input.GetAxis ("Vertical")) > 1f)
-				usingController = 0;
-			//trying to switch stuff based on what controller is in use. Mouse overrides if used
-
 			if (Cursor.lockState != CursorLockMode.Locked) {
 				Cursor.lockState = CursorLockMode.Locked;
 				Cursor.visible = false;
