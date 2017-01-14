@@ -50,11 +50,10 @@ public class BotMovement : MonoBehaviour
 	private GameObject ourhero;
 	private Rigidbody ourheroRigidbody;
 	private PlayerMovement playermovement;
-	private GuardianMovement guardianNmovement;
+	private GuardianMovement guardianmovement;
 	private GameObject level;
 	private SetUpBots setupbots;
-	private GameObject guardianN;
-	private GameObject guardianS;
+	private GameObject guardian;
 	private GameObject botZaps;
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
@@ -65,8 +64,8 @@ public class BotMovement : MonoBehaviour
 	private float squishRecoil = 0f;
 	private float squosh = 1f;
 	WaitForSeconds shortWait = new WaitForSeconds (0.01f);
-	Color dimColor = new Color (0.48f, 0.48f, 0.48f);
-	Color litColor = new Color (0.7f, 0.7f, 0.7f);
+	Color dimColor = new Color (0.46f, 0.46f, 0.46f);
+	Color litColor = new Color (0.72f, 0.72f, 0.72f);
 
 	void Awake ()
 	{
@@ -81,8 +80,8 @@ public class BotMovement : MonoBehaviour
 		playermovement = ourhero.GetComponent<PlayerMovement> ();
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
-		guardianN = GameObject.FindGameObjectWithTag ("GuardianN");
-		guardianNmovement = guardianN.GetComponent<GuardianMovement> ();
+		guardian = GameObject.FindGameObjectWithTag ("GuardianN");
+		guardianmovement = guardian.GetComponent<GuardianMovement> ();
 		withinRange = false;
 		botZaps = GameObject.FindGameObjectWithTag ("Line");
 		botZapsParticles = botZaps.GetComponent<ParticleSystem> ();
@@ -94,7 +93,7 @@ public class BotMovement : MonoBehaviour
 		if (yourMatch == playermovement.yourMatch)
 			audioSource.priority = 2;
 		else
-			audioSource.priority = 200;
+			audioSource.priority = 100;
 		//the counterpart is important, but the others less so
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
@@ -104,7 +103,7 @@ public class BotMovement : MonoBehaviour
 	{
 		jumpCounter -= 1;
 		//no matter what, if we collide we increment the jump counter
-		if (col.gameObject.tag == "Player" && notEnded) {
+		if (col.gameObject.tag == "Player" && notEnded && col.relativeVelocity.magnitude < 20f) {
 			if ((playermovement.yourMatch == yourMatch) && (setupbots.gameEnded == false)) {
 				rigidBody.velocity = Vector3.zero;
 				lerpedMove = Vector3.zero;
@@ -120,49 +119,23 @@ public class BotMovement : MonoBehaviour
 				//switch the earthquake FX to normal stereo, music playback
 				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
 				externalSource.PlayOneShot (happyEnding, 1f);
-				playermovement.dollyOffset = 3.0f;
 				notEnded = false;
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
-				//now to update all the score related stuff, so the 'next level' just triggers the new level load
-				if (PlayerMovement.countdown > 0)
-					PlayerMovement.countdown = (int)Math.Sqrt (PlayerMovement.countdown);
-				if (PlayerMovement.countdown < 0)
-					PlayerMovement.countdown = (int)-Math.Sqrt (-PlayerMovement.countdown);
-				//if we are gaining levels we gain them steadily. If we lose them we also lose them steadily
-				PlayerMovement.levelNumber = PlayerMovement.levelNumber + PlayerMovement.countdown;
+				PlayerMovement.levelNumber++;
 				if (PlayerMovement.levelNumber < 2)
 					PlayerMovement.levelNumber = 2;
-				if (PlayerMovement.levelNumber > PlayerMovement.maxlevelNumber)
-					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber;
-				if (PlayerMovement.levelNumber > PlayerMovement.playerScore)
-					PlayerMovement.playerScore = PlayerMovement.levelNumber;
-				//this is the only place we update score. You gotta complete the level, no matter how many bots you see around you.
-				//However, if we're trying a hard level and didn't lose too much time, we might not get the full amount of bots
-				//but we can at least get some score benefit from that. Score should not go backwards.
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
-				PlayerPrefs.SetInt ("maxlevelNumber", PlayerMovement.maxlevelNumber);
-				PlayerPrefs.SetInt ("playerScore", PlayerMovement.playerScore);
-				PlayerPrefs.SetFloat ("mouseSensitivity", playermovement.mouseSensitivity);
 				playermovement.locationOfCounterpart = Vector3.zero;
 				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
-				playermovement.maxbotsTextObj.text = string.Format ("bots:{0:0.}", PlayerMovement.playerScore);
-				playermovement.countdownTextObj.text = "found it! press e for next level or quit here to continue later";
-				PlayerMovement.countdown = 0;
 				PlayerPrefs.Save ();
 				//we collided with the counterpart so we move on to the next level
 			} else {
 				//it's not collision with the counterpart, so we do other collides
 				jumpCounter -= 1;
-
-				if (col.relativeVelocity.magnitude > 30f) {
+				if (col.relativeVelocity.magnitude > 20f) {
 					jumpCounter -= 1;
-
 					playermovement.timeBetweenGuardians = 1f;
-					playermovement.dollyOffset = col.relativeVelocity.magnitude / 200f;
-					//hitting a bot knocks your viewpoint
-
-
 					//you bonked a bot so the guardian will get between you
 					brainPointer += 1;
 					if (brainPointer >= botBrain.Length)
@@ -172,8 +145,7 @@ public class BotMovement : MonoBehaviour
 					audioSource.reverbZoneMix = 0f;
 					audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 					audioSource.volume = 0.5f;
-
-					if (col.relativeVelocity.magnitude > 40f) {
+					if (col.relativeVelocity.magnitude > 20f) {
 						smashedByPlayer = true;
 						overThere = lyingBot;
 						//if you've run into a bot, that bot will be mean to you thereafter.
@@ -183,14 +155,19 @@ public class BotMovement : MonoBehaviour
 						if (audioSource.pitch < 0.2f)
 							audioSource.pitch = 0.2f;
 						audioSource.volume = 1f;
-						//hard crash makes crashtinkle, but to no effect. This is where to add 'make the bot scared of you now'
+						myColor.material.color = new Color (0.3f, 0.3f, 0.3f);
+						sphereCollider.material.staticFriction = 0.2f;
+						rigidBody.freezeRotation = false;
+						rigidBody.angularDrag = 0.5f;
+						Destroy (this);
+						//REKKT. Bot's brain is destroyed, after setting its color to dim.
+						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
 						playermovement.timeBetweenGuardians = 1f;
 						//reset the guardian sensitivity
-						guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
+						guardianmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
 						//lerp value, slowly diminishes. Inter-bot hits can't make the guardian target you
-						guardianNmovement.locationTarget = transform.position;
+						guardianmovement.locationTarget = transform.position;
 						//whether or not we killed the other bot, we are going to trigger the guardian
-
 					}
 					audioSource.Play ();
 					//play if over 15 or more
@@ -221,31 +198,26 @@ public class BotMovement : MonoBehaviour
 				squishRecoil = 0f;
 				//try to splat when landing on terrain
 			}
-
 			//bots hitting bots here
-
 			if (col.relativeVelocity.magnitude > (playermovement.timeBetweenGuardians * 100f)) {
 				jumpCounter -= 1;
-
 				//amount of this gives us how active the guardians are
 				audioSource.clip = BotCrash;
 				audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 				audioSource.volume = 0.5f;
 				playermovement.timeBetweenGuardians = 1f;
 				//reset the guardian sensitivity
-				guardianNmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
-				if (guardianNmovement.guardianCooldown > 10f)
-					guardianNmovement.guardianCooldown = 10f;
+				guardianmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
+				if (guardianmovement.guardianCooldown > 10f)
+					guardianmovement.guardianCooldown = 10f;
 				//lerp value, slowly diminishes.
-				guardianNmovement.locationTarget = transform.position;
+				guardianmovement.locationTarget = transform.position;
 				//whether or not we killed the other bot, we are going to trigger the guardian
 			} //if the collision is hard, bots crash and the guardian goes to see them
-
 			BotMovement botmovement = col.gameObject.GetComponent<BotMovement> ();
 			if (botmovement != null) {
 				lyingBot = col.gameObject.transform.position;
 				//bump a bot and it becomes the one you're lying about if you lie to the player
-
 				if (botmovement.yourMatch == yourMatch) {
 					botmovement.brainPointer = brainPointer;
 					botmovement.step = 9999;
@@ -269,14 +241,13 @@ public class BotMovement : MonoBehaviour
 					}
 				}
 				//upon hitting another bot, if they're the same, they sync brainwaves. Or if they're different…
-
 				int left = Math.Abs (botmovement.botBrain [voicePointer].r - botBrain [voicePointer].r);
 				int right = Math.Abs (botmovement.botBrain [voicePointer].g - botBrain [voicePointer].g);
 				int center = Math.Abs (botmovement.botBrain [voicePointer].b - botBrain [voicePointer].b);
 				int combined = (left * right * center) / 10000;
 				if (combined > (100 - Math.Sqrt (PlayerMovement.levelNumber)))
 					botTarget = transform.position + ((transform.position - ourhero.transform.position) * (combined * PlayerMovement.levelNumber));
-				//when dissimilar bots hit each other, they flee like they'd flee you
+				//when dissimilar bots hit each other, they flee each other
 			}
 			//collision with another bot
 		} 
@@ -327,21 +298,6 @@ public class BotMovement : MonoBehaviour
 			}
 			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.Lerp (ourheroRigidbody.velocity, Vector3.zero, 0.3f), (botBrain [voicePointer].g / 200f));
 			//bots that are more than 50% G (greens and whites) are cooperative and stop to talk. Dark or nongreen bots won't.
-
-			if (smashedByPlayer == false) {
-				playermovement.packetDisplayIncrement++;
-				if (playermovement.packetDisplayIncrement > 23)
-					playermovement.packetDisplayIncrement = 0;
-				Color col = new Color (playermovement.yourBrain [voicePointer].r / 255f, playermovement.yourBrain [voicePointer].g / 255f, playermovement.yourBrain [voicePointer].b / 255f);
-				if (combined < (playermovement.adjustedLieThreshold + 128))
-					playermovement.colorBits.SetPixel (playermovement.packetDisplayIncrement, 0, col);
-
-				col = new Color (botBrain [voicePointer].r / 255f, botBrain [voicePointer].g / 255f, botBrain [voicePointer].b / 255f);
-				playermovement.colorBits.SetPixel (playermovement.packetDisplayIncrement, 1, col);
-				playermovement.colorBits.Apply ();
-				playermovement.colorDisplay.SetMaterial (playermovement.colorDisplay.GetMaterial (), playermovement.colorBits);
-				//update the screen only when it's actually updated
-			}
 		}
 	}
 
@@ -369,7 +325,6 @@ public class BotMovement : MonoBehaviour
 
 		rawMove = botTarget - transform.position;
 
-
 		desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
 		//this is where we're applying the desired move of the bot. Since it normalizes it, we can make
 		//rawMove any damn thing we want, it doesn't matter
@@ -389,9 +344,9 @@ public class BotMovement : MonoBehaviour
 
 		if ((rigidBody.velocity.magnitude) < (rawMove.magnitude * 0.001)) {
 			desiredMove *= 0.5f; //at one, even a single one of these makes 'em levitate
-			if (rawMove.magnitude > 1500f)
+			if (rawMove.magnitude > 100f)
 				rigidBody.AddForce (desiredMove, ForceMode.Impulse);
-			if (rawMove.magnitude > 4000f)
+			if (rawMove.magnitude > 500f)
 				rigidBody.AddForce (desiredMove, ForceMode.Impulse);
 			//they go like maniacs when they have to go very far
 		}
@@ -406,9 +361,9 @@ public class BotMovement : MonoBehaviour
 		desiredMove /= adjacentSolid;
 		//we're adding the move to the extent that we're near a surface
 
-		desiredMove *= (0.5f + (0.00002f * (brainR + brainG)));
+		desiredMove *= (0.5f + (0.00005f * (brainR + brainG)));
 		//scale everything back depending on the R factor
-		lerpedMove = Vector3.Lerp (lerpedMove, desiredMove, 0.001f + (0.0005f * brainR));
+		lerpedMove = Vector3.Lerp (lerpedMove, desiredMove, 0.001f + (0.001f * brainR));
 		//texture red makes the bots go more hyper!
 
 		rigidBody.AddForce (lerpedMove / adjacentSolid, ForceMode.Impulse);
@@ -441,7 +396,7 @@ public class BotMovement : MonoBehaviour
 				audioSource.Stop ();
 
 			if (transform.position.x < 0f) {
-				transform.position = new Vector3 (transform.position.x + 4000f, transform.position.y, transform.position.z);
+				transform.position = new Vector3 (transform.position.x + 1000f, transform.position.y, transform.position.z);
 			}
 
 			if (Physics.Linecast (transform.position, (playermovement.locationOfCounterpart + (transform.position - playermovement.locationOfCounterpart).normalized)) == false) {
@@ -455,7 +410,7 @@ public class BotMovement : MonoBehaviour
 			//If this is one of the bots with a grudge against you, it will consistently lie to you
 
 			if (transform.position.z < 0f) {
-				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 4000f);
+				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 1000f);
 			}
 
 			if (setupbots.gameEnded && (!setupbots.killed))
@@ -520,17 +475,13 @@ public class BotMovement : MonoBehaviour
 				}
 
 				rigidBody.angularVelocity = Vector3.zero;
-				//if (Mathf.Abs (squish) < 0.01f)
 				transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, brainG - 127f, brainB - 127f));
-				//else
-				//	transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, 0f, brainB - 127f));
-				//rotate only, but stay vertical for the bounce animations. Do full pivothead thing when not bouncing or landing
 				Color c = new Color (brainR, brainG, brainB);
 				SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 				//this is giving us 360 degree hue, and then saturation and luminance.
 				float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
 				float adjustedHueAngle = color.h + playermovement.creepRotAngle;
-				Vector3 spawnLocation = new Vector3 (1614f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 2083f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+				Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 				//aim bot at target
 				if (Physics.Raycast (spawnLocation, Vector3.down, out hit, 99999f, onlyTerrains))
 					botTarget = hit.point + Vector3.up;
@@ -539,8 +490,8 @@ public class BotMovement : MonoBehaviour
 			}
 			yield return shortWait;
 
-			if (transform.position.x > 4000f) {
-				transform.position = new Vector3 (transform.position.x - 4000f, transform.position.y, transform.position.z);
+			if (transform.position.x > 1000f) {
+				transform.position = new Vector3 (transform.position.x - 1000f, transform.position.y, transform.position.z);
 			}
 			if (audioSource.volume > 0.01 && audioSource.isPlaying && notEnded)
 				myColor.material.color = litColor;
@@ -550,37 +501,23 @@ public class BotMovement : MonoBehaviour
 
 			yield return shortWait;
 
-			if (transform.position.z > 4000f) {
-				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 4000f);
+			if (transform.position.z > 1000f) {
+				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 1000f);
 			}
 			distance = Vector3.Distance (transform.position, ourhero.transform.position);
 
-			int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
-			int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
-			int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
-			int combined = (left * right * center) / 10000;
-
-
-			if (distance < 25) {
+			if (distance < 30) {
 				meshfilter.mesh = meshLOD0;
 				withinRange = true;
-				if (combined > (150 - Math.Sqrt (PlayerMovement.levelNumber)) || smashedByPlayer == true) {
-					botTarget = transform.position + ((transform.position - ourhero.transform.position) * (combined * PlayerMovement.levelNumber));
-					//run from extreme differentness, or if player smashed us
-				}
 			} else {
+				withinRange = false;
 				if (distance < 50) {
 					meshfilter.mesh = meshLOD1;
-					withinRange = false;
-					if ((combined * 20000) < PlayerMovement.levelNumber && playermovement.yourMatch != yourMatch) {
-						botTarget = transform.position - ((transform.position - ourhero.transform.position) * PlayerMovement.levelNumber);
-						//botparazzi swarm the player. Your counterpart does not.
-					}
 				} else {
-					if (distance < 100) {
+					if (distance < 80) {
 						meshfilter.mesh = meshLOD2;
 					} else {
-						if (distance < 200) {
+						if (distance < 120) {
 							meshfilter.mesh = meshLOD3;
 						} else {
 							meshfilter.mesh = meshLOD4;
@@ -591,18 +528,13 @@ public class BotMovement : MonoBehaviour
 			//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 			if (playermovement.yourMatch == yourMatch) {
-				playermovement.yourMatchDistance = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
+				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position);
 				playermovement.yourMatchOccluded = false;
 				playermovement.locationOfCounterpart = transform.position;
 				//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
 				//also we update you with its location so bots looking for you can know if they see it.
 				if (Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
 					playermovement.yourMatchOccluded = true;
-				} else {
-					if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false && PlayerMovement.countdown < 1 && playermovement.freezeTime == false) {
-						//returns true if there's anything in the way. false means line of sight. Bot will come get you IF you're out of time and looking
-						botTarget = ourhero.transform.position;
-					}
 				}
 				//by doing this, we can see whether there's anything in the way of the ray between match and player
 				//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.

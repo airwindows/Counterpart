@@ -113,6 +113,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
+
 		Color guardianGlow = new Color (1f, 1f, 1f, 0.05f + (guardianCooldown * guardianCooldown * 0.02f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
@@ -123,23 +124,28 @@ public class GuardianMovement : MonoBehaviour {
 	IEnumerator SlowUpdates () {
 		while (true) {
 			if (guardianCooldown > 3f)
-				guardianCooldown -= 0.1f;
+				guardianCooldown -= 0.01f;
+				locationTarget = ourhero.transform.position;
 			//alternate way to deal with hyper guardians?
+			if (setupbots.gameEnded == true) {
+				ourhero.GetComponent<Rigidbody> ().velocity = Vector3.zero;
+			}
+
 			yield return guardianWait;
 
 			Vector3 rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 200f * guardianCooldown;
+			rawMove = rawMove.normalized * 120f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
-			guardianCooldown -= (0.1f / myRigidbody.velocity.magnitude);
+			guardianCooldown -= (0.01f / myRigidbody.velocity.magnitude);
 			//rapidly cool off if it's holding position over a bot, not so much when chasing
 			if (guardianCooldown > 6f) guardianCooldown = 6f;
 			//safeguard against crazy psycho zapping around
 
 			if (guardianCooldown < 0f) {
 				guardianCooldown = 0f;
-				locationTarget = new Vector3 (2000f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f), 100f, 2000f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 2000f));
+				locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f), 1f, 500f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f));
 				rawMove = locationTarget - transform.position;
-				rawMove = rawMove.normalized * 100f;
+				rawMove = rawMove.normalized * 60f;
 				myRigidbody.AddForce (rawMove);
 			}
 			yield return guardianWait;
@@ -147,15 +153,15 @@ public class GuardianMovement : MonoBehaviour {
 			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 			audiosource.pitch = pitch;
 			audiosource.priority = 4;
-			float targetVolume = 0.2f;
+			float targetVolume = 0.1f;
 			if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false) {
 				//returns true if there's anything in the way. false means line of sight.
-				targetVolume = 0.3f;
+				targetVolume = 0.2f;
 			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;
 
-			audiosource.volume = Mathf.Lerp (audiosource.volume, targetVolume + guardianCooldown, 0.0001f + (guardianCooldown * 0.001f));
+			audiosource.volume = Mathf.Lerp (audiosource.volume, targetVolume, 0.0001f + (guardianCooldown * 0.001f));
 			//ramp up fast but switch off more slowly.
 
 			yield return guardianWait;

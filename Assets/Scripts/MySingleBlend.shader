@@ -5,7 +5,7 @@ Properties {
 }
 
     SubShader { 
-		ZTest Always Cull Off ZWrite Off
+		ZTest Off Cull Off ZWrite Off
 		Pass {
 			Blend SrcAlpha One //SrcAlpha OneMinusSrcAlpha //is a smooth blend, One One is bloom city, SrcAlpha One is a hybrid
 			ColorMask RGB
@@ -97,7 +97,7 @@ Properties {
 	}
 
 SubShader {
-	ZTest Always Cull Off ZWrite Off
+	ZTest Off Cull Off ZWrite Off
 	Pass {
 		Blend One One //SrcAlpha OneMinusSrcAlpha //is a smooth blend, One One is bloom city, SrcAlpha One is a hybrid
 		ColorMask RGB
