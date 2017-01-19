@@ -63,6 +63,7 @@ public class BotMovement : MonoBehaviour
 	private float squish = 1f;
 	private float squishRecoil = 0f;
 	private float squosh = 1f;
+	private GameObject logo;
 	WaitForSeconds shortWait = new WaitForSeconds (0.01f);
 	Color dimColor = new Color (0.46f, 0.46f, 0.46f);
 	Color litColor = new Color (0.72f, 0.72f, 0.72f);
@@ -90,10 +91,14 @@ public class BotMovement : MonoBehaviour
 		smashedByPlayer = false;
 		overThere = Vector3.zero;
 		lyingBot = Vector3.zero;
-		if (yourMatch == playermovement.yourMatch)
+		if (yourMatch == playermovement.yourMatch) {
 			audioSource.priority = 2;
-		else
+			logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+			logo.GetComponent<Text> ().text = " ";
+			//use counterpart to blank the display
+		} else {
 			audioSource.priority = 100;
+		}
 		//the counterpart is important, but the others less so
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
@@ -103,7 +108,7 @@ public class BotMovement : MonoBehaviour
 	{
 		jumpCounter -= 1;
 		//no matter what, if we collide we increment the jump counter
-		if (col.gameObject.tag == "Player" && notEnded && col.relativeVelocity.magnitude < 20f) {
+		if (col.gameObject.tag == "Player" && notEnded) {
 			if ((playermovement.yourMatch == yourMatch) && (setupbots.gameEnded == false)) {
 				rigidBody.velocity = Vector3.zero;
 				lerpedMove = Vector3.zero;
@@ -122,9 +127,13 @@ public class BotMovement : MonoBehaviour
 				notEnded = false;
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
-				PlayerMovement.levelNumber += (int)Math.Sqrt(PlayerMovement.levelNumber);
-				if (PlayerMovement.levelNumber < 2)
-					PlayerMovement.levelNumber = 2;
+				PlayerMovement.levelNumber += 1;
+				if (PlayerMovement.levelNumber < 1)
+					PlayerMovement.levelNumber = 1;
+
+				logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+				logo.GetComponent<Text>().text = string.Format ("Level {0:0.}", PlayerMovement.levelNumber);
+
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
 				playermovement.locationOfCounterpart = Vector3.zero;
 				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
@@ -133,7 +142,7 @@ public class BotMovement : MonoBehaviour
 			} else {
 				//it's not collision with the counterpart, so we do other collides
 				jumpCounter -= 1;
-				if (col.relativeVelocity.magnitude > 20f) {
+				if (col.relativeVelocity.magnitude > 15f) {
 					jumpCounter -= 1;
 					playermovement.timeBetweenGuardians = 1f;
 					//you bonked a bot so the guardian will get between you
@@ -145,7 +154,7 @@ public class BotMovement : MonoBehaviour
 					audioSource.reverbZoneMix = 0f;
 					audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
 					audioSource.volume = 0.5f;
-					if (col.relativeVelocity.magnitude > 20f) {
+					if (col.relativeVelocity.magnitude > 30f) {
 						smashedByPlayer = true;
 						overThere = lyingBot;
 						//if you've run into a bot, that bot will be mean to you thereafter.
@@ -164,8 +173,8 @@ public class BotMovement : MonoBehaviour
 						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
 						playermovement.timeBetweenGuardians = 1f;
 						//reset the guardian sensitivity
-						guardianmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
-						//lerp value, slowly diminishes. Inter-bot hits can't make the guardian target you
+						guardianmovement.guardianCooldown += (col.relativeVelocity.magnitude / 10f);
+						//lerp value, slowly diminishes.
 						guardianmovement.locationTarget = transform.position;
 						//whether or not we killed the other bot, we are going to trigger the guardian
 					}
@@ -207,10 +216,7 @@ public class BotMovement : MonoBehaviour
 				audioSource.volume = 0.5f;
 				playermovement.timeBetweenGuardians = 1f;
 				//reset the guardian sensitivity
-				guardianmovement.guardianCooldown += ((col.relativeVelocity.magnitude / 10f) * (rigidBody.velocity.magnitude * 0.025f));
-				if (guardianmovement.guardianCooldown > 10f)
-					guardianmovement.guardianCooldown = 10f;
-				//lerp value, slowly diminishes.
+				guardianmovement.guardianCooldown += (col.relativeVelocity.magnitude / 20f);
 				guardianmovement.locationTarget = transform.position;
 				//whether or not we killed the other bot, we are going to trigger the guardian
 			} //if the collision is hard, bots crash and the guardian goes to see them
@@ -231,9 +237,9 @@ public class BotMovement : MonoBehaviour
 						brainR = botBrain [brainPointer].r;
 						brainG = botBrain [brainPointer].g;
 						brainB = botBrain [brainPointer].b;
-						audioSource.reverbZoneMix = Vector3.Distance (transform.position, ourhero.transform.position) / 480f;
+						audioSource.reverbZoneMix = Vector3.Distance (transform.position, ourhero.transform.position) / 420f;
 						float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
-						if (voicePitch > 0f)
+						if (voicePitch > 0.001f)
 							audioSource.pitch = voicePitch;
 						if (!audioSource.isPlaying)
 							audioSource.Play ();
@@ -310,7 +316,7 @@ public class BotMovement : MonoBehaviour
 	void FixedUpdate ()
 	{
 		squishRecoil -= (squish * 0.128f);
-		squish = (squish + squishRecoil) * 0.7f;
+		squish = (squish + squishRecoil) * 0.75f;
 
 		squosh = 1f - (squish * 0.6283f); //expand out to the sides
 		transform.localScale = new Vector3 (squosh, squish + 1f, squosh);
@@ -379,8 +385,8 @@ public class BotMovement : MonoBehaviour
 			jumpCounter = (int)Math.Sqrt (brainB + brainG) + 1;
 			//purely red bots are jumpier
 			rigidBody.AddForce (Vector3.up * 15f, ForceMode.Impulse);
-			squish = 0.3f;
-			squishRecoil = 0.3f;
+			squish = 0.35f;
+			squishRecoil = 0.35f;
 			//jump!
 		}
 
@@ -506,18 +512,19 @@ public class BotMovement : MonoBehaviour
 			}
 			distance = Vector3.Distance (transform.position, ourhero.transform.position);
 
+			withinRange = true;
 			if (distance < 30) {
 				meshfilter.mesh = meshLOD0;
-				withinRange = true;
 			} else {
-				withinRange = false;
-				if (distance < 50) {
+				if (distance < 60) {
 					meshfilter.mesh = meshLOD1;
 				} else {
-					if (distance < 80) {
+					if (distance < 120) {
 						meshfilter.mesh = meshLOD2;
 					} else {
-						if (distance < 120) {
+						withinRange = false;
+						//not closer than 80
+						if (distance < 180) {
 							meshfilter.mesh = meshLOD3;
 						} else {
 							meshfilter.mesh = meshLOD4;

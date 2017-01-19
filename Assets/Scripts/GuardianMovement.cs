@@ -14,6 +14,7 @@ public class GuardianMovement : MonoBehaviour {
 	private Material guardianCore;
 	private Material guardianMiddle;
 	private Material guardianSurface;
+	private Material guardianAura;
 	private float churnCoreVisuals = 1f;
 	private float churnMiddleVisuals = 1f;
 	private float churnSurfaceVisuals = 1f;
@@ -38,6 +39,7 @@ public class GuardianMovement : MonoBehaviour {
 		guardianCore = transform.Find ("Core").GetComponent<Renderer> ().material;
 		guardianMiddle = transform.Find ("Middle Layer").GetComponent<Renderer> ().material;
 		guardianSurface = transform.Find ("Surface Sphere").GetComponent<Renderer> ().material;
+		guardianAura = transform.Find ("Aura").GetComponent<Renderer> ().material;
 		earthquakeLight = GameObject.FindGameObjectWithTag ("overheadLight");
 		externalSource = earthquakeLight.GetComponent<AudioSource> ();
 		//the guardian's one of the more important sounds
@@ -80,10 +82,7 @@ public class GuardianMovement : MonoBehaviour {
 				//
 				logo.GetComponent<Text>().text = "Game Over";
 				guardianCooldown = 0f;
-				PlayerPrefs.SetInt ("levelNumber", 2);
-				PlayerPrefs.SetInt ("maxlevelNumber", 2);
-				PlayerPrefs.SetInt ("playerScore", 0);
-				PlayerPrefs.SetFloat ("guardianHostility", 0);
+				PlayerPrefs.SetInt ("levelNumber", 1);
 				PlayerPrefs.Save();
 			}
 			//player is unkillable if they've already won
@@ -93,7 +92,7 @@ public class GuardianMovement : MonoBehaviour {
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		guardianCooldown = 7f;
+		guardianCooldown = 2f;
 		if (shotBy.CompareTag ("playerPackets")) {
 			locationTarget = ourhero.transform.position;
 		}
@@ -114,16 +113,23 @@ public class GuardianMovement : MonoBehaviour {
 		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
 
 
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.05f + (guardianCooldown * guardianCooldown * 0.02f));
+		Color guardianGlow = new Color (1f, 1f, 1f, 0.1f + (guardianCooldown * guardianCooldown * 0.02f));
 		guardianCore.SetColor("_TintColor", guardianGlow);
+
+		guardianGlow = new Color (1f, 1f, 1f, 0.08f + (guardianCooldown * guardianCooldown * 0.01f));
 		guardianMiddle.SetColor("_TintColor", guardianGlow);
+
+		guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.005f));
 		guardianSurface.SetColor("_TintColor", guardianGlow);
+
+		guardianGlow = new Color (1f, 1f, 1f, 0.04f + (guardianCooldown * guardianCooldown * 0.0025f));
+		guardianAura.SetColor("_TintColor", guardianGlow);
 		//note that it is NOT '_Color' that we are setting with the material dialog in Unity!
 		}
 
 	IEnumerator SlowUpdates () {
 		while (true) {
-			if (guardianCooldown > 3f)
+			if (guardianCooldown > 1f)
 				guardianCooldown -= 0.01f;
 				locationTarget = ourhero.transform.position;
 			//alternate way to deal with hyper guardians?
@@ -134,18 +140,18 @@ public class GuardianMovement : MonoBehaviour {
 			yield return guardianWait;
 
 			Vector3 rawMove = locationTarget - transform.position;
-			rawMove = rawMove.normalized * 120f * guardianCooldown;
+			rawMove = rawMove.normalized * 40f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
 			guardianCooldown -= (0.01f / myRigidbody.velocity.magnitude);
 			//rapidly cool off if it's holding position over a bot, not so much when chasing
-			if (guardianCooldown > 6f) guardianCooldown = 6f;
+			if (guardianCooldown > 2f) guardianCooldown = 2f;
 			//safeguard against crazy psycho zapping around
 
 			if (guardianCooldown < 0f) {
 				guardianCooldown = 0f;
 				locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f), 1f, 500f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f));
 				rawMove = locationTarget - transform.position;
-				rawMove = rawMove.normalized * 60f;
+				rawMove = rawMove.normalized * 100f;
 				myRigidbody.AddForce (rawMove);
 			}
 			yield return guardianWait;

@@ -37,7 +37,6 @@ public class PlayerMovement : MonoBehaviour
 	private Rigidbody rigidBody;
 	private Vector3 startPosition;
 	private Vector3 endPosition;
-	private Vector3 lastPlayerPosition;
 	private float stepsBetween;
 	private LayerMask onlyTerrains;
 	private SphereCollider sphereCollider;
@@ -45,6 +44,7 @@ public class PlayerMovement : MonoBehaviour
 	public float yourMatchDistance = 9999;
 	public bool yourMatchOccluded = true;
 	private int pingTimer = 2;
+	private bool pingGeiger = false;
 	private BackgroundSound backgroundSound;
 	public AudioClip botBeep;
 	public float baseFOV = 68f;
@@ -71,10 +71,13 @@ public class PlayerMovement : MonoBehaviour
 	private GuardianMovement guardianmovement;
 	public Vector3 locationOfCounterpart;
 	private RaycastHit hit;
+	private Vector2 input = Vector2.zero;
 	private float cameraZoom = 0f;
 	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
+	public float startAtRange;
 	public float creepRotAngle = 1f;
+	public int residueSequence = 1;
 	private float velCompensated = 0.00025f;
 	private Vector3 positionOffset = new Vector3 (20f, -20f, 0f);
 	private GameObject level;
@@ -102,16 +105,18 @@ public class PlayerMovement : MonoBehaviour
 		level = GameObject.FindGameObjectWithTag ("Level");
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
-		levelNumber = PlayerPrefs.GetInt ("levelNumber", 2);
-		botNumber = levelNumber;
-		totalBotNumber = levelNumber;
+		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
 		adjustedLieThreshold = 300 - (int)Math.Sqrt (levelNumber);
 		//this will move the threshold for bots not cooperating (telling you lies) from 256 down to 225 at level 1000
 		//if you could even get level 10000 it will make it 156. At level 65536 nothing helps you at all, ever
 
-		int residueSequence = (int)Mathf.Pow (levelNumber, 4);
-		creepToRange = (residueSequence % (PlayerMovement.levelNumber + 23)) + 27;
+		residueSequence = (int)Mathf.Pow (levelNumber, 4);
+		creepToRange = (residueSequence % (PlayerMovement.levelNumber + 23)) + 15;
+		startAtRange = Mathf.Min(Mathf.Pow(residueSequence,2) % Mathf.Pow(PlayerMovement.levelNumber,2),400) + 1;
 		creepRotAngle = (residueSequence % 359);
+		botNumber = (int)(residueSequence % (Math.Pow(PlayerMovement.levelNumber,2))) + 1;
+		totalBotNumber = levelNumber;
+
 	}
 
 	void Start ()
@@ -121,7 +126,6 @@ public class PlayerMovement : MonoBehaviour
 		transform.position = playerPosition;
 		startPosition = transform.position;
 		endPosition = transform.position;
-		lastPlayerPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
 		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 500f), 1f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 500f));
@@ -134,7 +138,7 @@ public class PlayerMovement : MonoBehaviour
 	void OnApplicationQuit ()
 	{
 		if (setupbots.gameEnded != true) {
-			PlayerPrefs.SetInt ("levelNumber", 2);
+			PlayerPrefs.SetInt ("levelNumber", 1);
 			PlayerPrefs.Save ();
 			//if we are quitting, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
@@ -146,13 +150,16 @@ public class PlayerMovement : MonoBehaviour
 		//Each frame we run Update, regardless of what game control/physics is doing. This is the fundamental 'tick' of the game but it's wildly time-variant: it goes as fast as possible.
 		cameraDolly.transform.localPosition = Vector3.Lerp (startPosition, endPosition, stepsBetween);
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
-		float tempMouse = Input.GetAxis ("MouseX") / mouseSensitivity;
+		input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
+		if (Input.GetButton ("MouseForward"))
+		    input.y = 1;
+		float tempMouse = Input.GetAxisRaw ("MouseX") / mouseSensitivity;
 		mouseDrag = Mathf.Abs (tempMouse);
-		initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxis ("MouseX") * 0.1f));
-		tempMouse = Input.GetAxis ("MouseY") / mouseSensitivity;
+		initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxisRaw ("MouseX") * 0.1f));
+		tempMouse = Input.GetAxisRaw ("MouseY") / mouseSensitivity;
 		if (Mathf.Abs (tempMouse) > mouseDrag)
 			mouseDrag = Mathf.Abs (tempMouse);
-		initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxis ("MouseY") * 0.1f));
+		initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxisRaw ("MouseY") * 0.1f));
 		tempMouse = -tempMouse;
 		if (initialTurn < 0f)
 			initialTurn += clampRotateAngle;
@@ -191,7 +198,7 @@ public class PlayerMovement : MonoBehaviour
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
 		
-		if ((Input.GetButton ("Jump") || Input.GetButton ("KeyboardJump")) && releaseJump) {
+		if ((Input.GetButton ("KeyboardJump") || Input.GetButton ("MouseJump") ) && releaseJump) {
 			if (Physics.Raycast (transform.position, Vector3.down, out hit)) {
 				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow (hit.distance, 3), ForceMode.Impulse);
 				releaseJump = false;
@@ -212,8 +219,6 @@ public class PlayerMovement : MonoBehaviour
 		//to allow physics to run correctly.
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
-		Vector2 input = Vector2.zero;
-		input = new Vector2 (Input.GetAxis ("Horizontal"), Input.GetAxis ("Vertical"));
 		Vector3 groundContactNormal;
 		Vector3 rawMove = mainCamera.transform.forward * input.y + mainCamera.transform.right * input.x;
 		float adjacentSolid = 99999;
@@ -223,7 +228,7 @@ public class PlayerMovement : MonoBehaviour
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 		
 		particlesystem.transform.localPosition = Vector3.forward * (1f + (rigidBody.velocity.magnitude * Time.fixedDeltaTime));
-		if (Input.GetButton ("Talk") || Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
+		if (Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
 			if (!particlesystem.isPlaying)
 				particlesystem.Play ();
 			particlesystem.Emit (1);
@@ -237,36 +242,12 @@ public class PlayerMovement : MonoBehaviour
 			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
 		}
 		pingTimer += 1;
-		if (pingTimer > yourMatchDistance)
+		if (pingTimer > yourMatchDistance) {
 			pingTimer = 0;
-
-		if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
-			//we are playing the smashing sounds of the giant guardians
-		} else {
-			audiosource.pitch = 3f / ((pingTimer + 64f) / 65f);
-			if (pingTimer == 0) {
-				if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
-					float pingVolume = 0.5f / Mathf.Sqrt (yourMatchDistance);
-					if (audiosource.clip != botBeep)
-						audiosource.clip = botBeep;
-					if (yourMatchOccluded) {
-						audiosource.volume = pingVolume;
-						audiosource.reverbZoneMix = 1.3f;
-					} else {
-						audiosource.volume = pingVolume;
-						//we will keep it the same so it sounds the same: increasing volume
-						//caused it to sound different inc. in the reverb
-						float verbZone = 2f - (70f / yourMatchDistance);
-						if (verbZone < 0f)
-							verbZone = 0f;
-						audiosource.reverbZoneMix = verbZone;
-					}
-					audiosource.Play ();
-				}
-			}
-			//this is our geiger counter for our bot
+			pingGeiger = true;
 		}
-
+		//only need to update the ping timer
+		
 		if (Physics.Raycast (transform.position, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			altitude = hit.distance;
 			if (adjacentSolid > altitude)
@@ -282,24 +263,6 @@ public class PlayerMovement : MonoBehaviour
 			}
 		}
 
-		if (Physics.Raycast (transform.position, Vector3.left, out hit, 99f, onlyTerrains)) {
-			if (adjacentSolid > hit.distance)
-				adjacentSolid = hit.distance;
-		}
-		if (Physics.Raycast (transform.position, Vector3.right, out hit, 99f, onlyTerrains)) {
-			if (adjacentSolid > hit.distance)
-				adjacentSolid = hit.distance;
-		}
-		if (Physics.Raycast (transform.position, Vector3.forward, out hit, 99f, onlyTerrains)) {
-			if (adjacentSolid > hit.distance)
-				adjacentSolid = hit.distance;
-		}
-		if (Physics.Raycast (transform.position, Vector3.back, out hit, 99f, onlyTerrains)) {
-			if (adjacentSolid > hit.distance)
-				adjacentSolid = hit.distance;
-		}
-		//this gives us a quick nearest-surface check for all directions but up
-		
 		if (adjacentSolid < 1) {
 			float bumpUp = transform.position.y + ((1 - adjacentSolid) / 32);
 			transform.position = new Vector3 (transform.position.x, bumpUp, transform.position.z);
@@ -332,7 +295,7 @@ public class PlayerMovement : MonoBehaviour
 			adjacentSolid = 1f; //insanity check
 		desiredMove /= (adjacentSolid + mouseDrag);
 		//we're adding the move to the extent that we're near a surface
-		rigidBody.drag = momentum / adjacentSolid; //1f + mouseDrag
+		rigidBody.drag = momentum / adjacentSolid;
 		//alternately, we have high drag if we're near a surface and little in the air
 		
 		rigidBody.AddForce (desiredMove, ForceMode.Impulse);
@@ -342,15 +305,6 @@ public class PlayerMovement : MonoBehaviour
 		startPosition = Vector3.zero;
 		endPosition = rigidBody.velocity * Time.fixedDeltaTime;
 		//we see if this will work. Certainly we want to scale it to fixedDeltaTime as we're in FixedUpdate
-
-		if (Vector3.Distance (transform.position, lastPlayerPosition) > 5f) {
-			transform.position = lastPlayerPosition;
-			rigidBody.velocity = Vector3.zero;
-			endPosition = startPosition;
-		} else
-			lastPlayerPosition = transform.position;
-		//insanity check: if for any reason we've moved faster than 5 world units per tick, the dreaded geometry glitch has struck
-		//and so we don't move from the last good place, and we zero velocity and see if that does any good.
 	}
 
 	IEnumerator SlowUpdates ()
@@ -362,7 +316,7 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-			if (setupbots.gameEnded && (Input.GetButton ("Next") || Input.GetButton ("KeyboardNext"))) {
+			if (setupbots.gameEnded && (Input.GetButton ("MouseJump") || Input.GetButton ("KeyboardJump"))) {
 				//trigger new level load on completing of level
 				//we have already updated the score and saved prefs
 				Application.LoadLevel ("Scene");
@@ -370,13 +324,45 @@ public class PlayerMovement : MonoBehaviour
 
 			timeBetweenGuardians *= 0.995f;
 			//with this factor we scale how sensitive guardians are to bots bumping each other
+
+			if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
+				//we are playing the smashing sounds of the giant guardians
+			} else {
+				audiosource.pitch = 3f;
+				if (pingGeiger == true) {
+					pingGeiger = false;
+					//reset trigger for our slow update ping
+					if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
+						if (audiosource.clip != botBeep)
+							audiosource.clip = botBeep;
+						if (yourMatchOccluded) {
+							audiosource.volume = 0.275f;
+							audiosource.reverbZoneMix = 1f;
+						} else {
+							audiosource.volume = 0.3f;
+							audiosource.reverbZoneMix = 0.3f;
+						}
+						if (yourMatchDistance > 100) {
+							audiosource.volume = 0.25f;
+							audiosource.reverbZoneMix = 2.0f;
+							if (yourMatchDistance > 200) {
+								audiosource.volume = 0.2f;
+								audiosource.reverbZoneMix = 4.0f;
+							}
+						}
+						audiosource.Play ();
+					}
+				}
+				//this is our geiger counter for our bot
+			}
+
 			yield return playerWait;
 
 			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 2f) + (initialUpDown * 4f) + (playerPosition.y / 200f);
 			//elaborate zoom goes wide angle for looking up, and for high ground
 
 			if (transform.position.y < -1) {
-				rigidBody.velocity *= 0.99f;
+				//rigidBody.velocity *= 0.99f;
 				guardianmovement.guardianCooldown = 4f;
 				guardianmovement.locationTarget = transform.position;
 				//call the guardian!
@@ -407,7 +393,6 @@ public class PlayerMovement : MonoBehaviour
 			if (transform.position.y < -10) {
 				transform.position = new Vector3 (transform.position.x, -100, transform.position.z);
 				playerPosition = transform.position;
-				lastPlayerPosition = playerPosition;
 			}
 
 			skyboxCamera.fieldOfView = baseFOV + (cameraZoom * 0.7f);

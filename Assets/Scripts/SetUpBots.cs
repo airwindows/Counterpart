@@ -16,6 +16,7 @@ public class SetUpBots : MonoBehaviour {
 	private float spacing;
 	private float degrees;
 	private Vector3 spawnLocationA;
+	private GameObject logo;
 	//Texture array must be set up in the editor as LoadAll no worky
 	//to do this, lock the inspector and then select all textures and drag them onto the array
 	//this is also a single script that remains attached to the level
@@ -31,9 +32,12 @@ public class SetUpBots : MonoBehaviour {
 		RaycastHit hit;
 		gameEnded = false;
 		killed = false;
-		float terrainHeight = 10f + PlayerMovement.levelNumber;
+
+		float terrainHeight = 1f + (Mathf.Pow(playermovement.residueSequence,3) % (PlayerMovement.levelNumber * 10));
 		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (1000f, terrainHeight, 1000f);
 		//must be after Awake so we can get the level number in Player
+
+
 
 		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
 		if (Physics.Raycast (PlayerMovement.playerPosition, Vector3.down, out hit)) PlayerMovement.playerPosition = hit.point + Vector3.up;
@@ -47,7 +51,7 @@ public class SetUpBots : MonoBehaviour {
 		//so if we're on level 2, you're always one of the first 2, though additional ones could be anything
 		//if they're spawned through the extra-bot-spawn mechanics
 
-		yourMatch = Random.Range(0, randBots);
+		yourMatch = Random.Range(0, botTexture.Length);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
 
@@ -61,7 +65,7 @@ public class SetUpBots : MonoBehaviour {
 
 		//Now, anything else is random
 		
-		for (int i = 0; i < randBots; i++) {
+		for (int i = 1; i < randBots; i++) {
 			if (i != yourMatch) {
 				SpawnBot (i);
 			}
@@ -108,7 +112,7 @@ public class SetUpBots : MonoBehaviour {
 		Color c = new Color (brainR, brainG, brainB);
 		HSLColor color = HSLColor.FromRGBA (c);
 		//this is giving us 360 degree hue, and then saturation and luminance.
-		float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
+		float botDistance = Mathf.Abs (1f - color.s) * playermovement.startAtRange;
 		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
 		Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 		//aim bot at target
