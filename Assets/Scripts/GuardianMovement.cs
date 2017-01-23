@@ -130,9 +130,11 @@ public class GuardianMovement : MonoBehaviour {
 	IEnumerator SlowUpdates () {
 		while (true) {
 			if (guardianCooldown > 1f)
-				guardianCooldown -= 0.01f;
+				guardianCooldown -= 0.02f;
+			if (churnCoreVisuals * 3f < guardianCooldown)
 				locationTarget = ourhero.transform.position;
 			//alternate way to deal with hyper guardians?
+
 			if (setupbots.gameEnded == true) {
 				ourhero.GetComponent<Rigidbody> ().velocity = Vector3.zero;
 			}
@@ -142,16 +144,13 @@ public class GuardianMovement : MonoBehaviour {
 			Vector3 rawMove = locationTarget - transform.position;
 			rawMove = rawMove.normalized * 40f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
-			guardianCooldown -= (0.01f / myRigidbody.velocity.magnitude);
-			//rapidly cool off if it's holding position over a bot, not so much when chasing
-			if (guardianCooldown > 2f) guardianCooldown = 2f;
+			if (guardianCooldown > 4f) guardianCooldown = 3f;
 			//safeguard against crazy psycho zapping around
 
 			if (guardianCooldown < 0f) {
 				guardianCooldown = 0f;
-				locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f), 1f, 500f + (Mathf.Cos (Mathf.PI / 180f * playermovement.creepRotAngle) * 500f));
 				rawMove = locationTarget - transform.position;
-				rawMove = rawMove.normalized * 100f;
+				rawMove = rawMove.normalized * playermovement.terrainHeight;
 				myRigidbody.AddForce (rawMove);
 			}
 			yield return guardianWait;

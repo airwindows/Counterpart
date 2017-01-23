@@ -1,10 +1,19 @@
 fileFormatVersion: 2
 guid: d31993e7f3ea14e7eb5f09bc58345bc4
-timeCreated: 1451618052
+timeCreated: 1485096316
 licenseType: Free
 MonoImporter:
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - meshLOD0: {instanceID: 0}
+  - meshLOD1: {instanceID: 0}
+  - meshLOD2: {instanceID: 0}
+  - meshLOD3: {instanceID: 0}
+  - meshLOD4: {instanceID: 0}
+  - BotCrash: {instanceID: 0}
+  - BotCrashTinkle: {instanceID: 0}
+  - BotBeep: {instanceID: 0}
+  - NewLevelAcquire: {fileID: 8300000, guid: d5286d08ccf84402ebebed377ce2f183, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

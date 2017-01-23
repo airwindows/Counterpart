@@ -48,7 +48,7 @@ public class PlayerMovement : MonoBehaviour
 	private BackgroundSound backgroundSound;
 	public AudioClip botBeep;
 	public float baseFOV = 68f;
-	public float mouseSensitivity = 100f;
+	public float mouseSensitivity;
 	public float mouseDrag = 0f;
 	public float baseJump;
 	public float maximumBank = 1f;
@@ -60,6 +60,8 @@ public class PlayerMovement : MonoBehaviour
 	private float yRot = 0f;
 	private float yCorrect = 0f;
 	private float zRot = 0f;
+	private bool reflected;
+	public float terrainHeight;
 	public float clampRotateAngle = Mathf.PI * 2f;
 	public Vector3 desiredAimOffsetPosition;
 	public int botNumber;
@@ -73,7 +75,6 @@ public class PlayerMovement : MonoBehaviour
 	private RaycastHit hit;
 	private Vector2 input = Vector2.zero;
 	private float cameraZoom = 0f;
-	public float timeBetweenGuardians = 1f;
 	public float creepToRange;
 	public float startAtRange;
 	public float creepRotAngle = 1f;
@@ -82,8 +83,6 @@ public class PlayerMovement : MonoBehaviour
 	private Vector3 positionOffset = new Vector3 (20f, -20f, 0f);
 	private GameObject level;
 	private SetUpBots setupbots;
-	public int packetDisplayIncrement = 0;
-	public int adjustedLieThreshold;
 	public Renderer ourbody;
 	private bool supportsRenderTextures;
 	WaitForSeconds playerWait = new WaitForSeconds (0.015f);
@@ -106,17 +105,20 @@ public class PlayerMovement : MonoBehaviour
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
-		adjustedLieThreshold = 300 - (int)Math.Sqrt (levelNumber);
-		//this will move the threshold for bots not cooperating (telling you lies) from 256 down to 225 at level 1000
-		//if you could even get level 10000 it will make it 156. At level 65536 nothing helps you at all, ever
-
+		reflected = false;
 		residueSequence = (int)Mathf.Pow (levelNumber, 4);
-		creepToRange = (residueSequence % (PlayerMovement.levelNumber + 23)) + 15;
-		startAtRange = Mathf.Min(Mathf.Pow(residueSequence,2) % Mathf.Pow(PlayerMovement.levelNumber,2),400) + 1;
+		startAtRange = ((Mathf.Pow (residueSequence, 2) % Mathf.Pow (PlayerMovement.levelNumber, 2)) % 300) + 10;
 		creepRotAngle = (residueSequence % 359);
-		botNumber = (int)(residueSequence % (Math.Pow(PlayerMovement.levelNumber,2))) + 1;
-		totalBotNumber = levelNumber;
-
+		botNumber = (int)(Mathf.Pow (PlayerMovement.levelNumber, 2) % 900) + 2;
+		if (botNumber < 700)
+			botNumber = botNumber % 300;
+		//more likely to get WTF crowds, but typically it's more moderate
+		totalBotNumber = botNumber;
+		creepToRange = ((residueSequence % botNumber) % 468) + Mathf.Sqrt (botNumber);
+		terrainHeight = ((Mathf.Pow (residueSequence, 2) % 20) + Mathf.Pow (Mathf.Pow (residueSequence, 5) % levelNumber, 2)) % 700;
+		if (terrainHeight < 680)
+			terrainHeight = terrainHeight % 400;
+		//leave a few WTF levels in there but most will be usable
 	}
 
 	void Start ()
@@ -128,7 +130,7 @@ public class PlayerMovement : MonoBehaviour
 		endPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
-		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 500f), 1f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 500f));
+		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 400f), 1000f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 400f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		StartCoroutine ("SlowUpdates");
@@ -152,15 +154,25 @@ public class PlayerMovement : MonoBehaviour
 		stepsBetween += (Time.deltaTime * Time.fixedDeltaTime);
 		input = new Vector2 (Input.GetAxisRaw ("Horizontal"), Input.GetAxisRaw ("Vertical"));
 		if (Input.GetButton ("MouseForward"))
-		    input.y = 1;
-		float tempMouse = Input.GetAxisRaw ("MouseX") / mouseSensitivity;
-		mouseDrag = Mathf.Abs (tempMouse);
-		initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, Mathf.Abs (Input.GetAxisRaw ("MouseX") * 0.1f));
-		tempMouse = Input.GetAxisRaw ("MouseY") / mouseSensitivity;
+			input.y = 1;
+
+		float tempMouse = Input.GetAxisRaw ("MouseX");
+		if (tempMouse > 0)
+			tempMouse = (Mathf.Sqrt (tempMouse + 81f) - 9f) / mouseSensitivity;
+		if (tempMouse < 0)
+			tempMouse = -(Mathf.Sqrt (-tempMouse + 81f) - 9f) / mouseSensitivity;
+		initialTurn = Mathf.Lerp(initialTurn, initialTurn-tempMouse, 0.618f);
+		mouseDrag = Mathf.Abs (tempMouse); //maximum of h and v is used later as a physics drag factor
+		
+		tempMouse = Input.GetAxisRaw ("MouseY");
+		if (tempMouse > 0)
+			tempMouse = (Mathf.Sqrt (tempMouse + 81f) - 9f) / mouseSensitivity;
+		if (tempMouse < 0)
+			tempMouse = -(Mathf.Sqrt (-tempMouse + 81f) - 9f) / mouseSensitivity;
+		initialUpDown = Mathf.Lerp(initialUpDown, initialUpDown+tempMouse, 0.618f);
 		if (Mathf.Abs (tempMouse) > mouseDrag)
-			mouseDrag = Mathf.Abs (tempMouse);
-		initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, Mathf.Abs (Input.GetAxisRaw ("MouseY") * 0.1f));
-		tempMouse = -tempMouse;
+			mouseDrag = Mathf.Abs (tempMouse); //physics drag factor
+
 		if (initialTurn < 0f)
 			initialTurn += clampRotateAngle;
 		if (initialTurn > clampRotateAngle)
@@ -198,7 +210,7 @@ public class PlayerMovement : MonoBehaviour
 		//We simply offset a point from where we are, using simple orbital math, and look at it
 		//The positioning is simple and predictable, and LookAt is great at translating that into quaternions.
 		
-		if ((Input.GetButton ("KeyboardJump") || Input.GetButton ("MouseJump") ) && releaseJump) {
+		if ((Input.GetButton ("KeyboardJump") || Input.GetButton ("MouseJump")) && releaseJump) {
 			if (Physics.Raycast (transform.position, Vector3.down, out hit)) {
 				rigidBody.AddForce (Vector3.up * baseJump / Mathf.Pow (hit.distance, 3), ForceMode.Impulse);
 				releaseJump = false;
@@ -222,8 +234,7 @@ public class PlayerMovement : MonoBehaviour
 		Vector3 groundContactNormal;
 		Vector3 rawMove = mainCamera.transform.forward * input.y + mainCamera.transform.right * input.x;
 		float adjacentSolid = 99999;
-		float downSolid = 99999;
-
+		
 		releaseJump = true;
 		//it's FixedUpdate, so release the jump in Update again so it can be retriggered.
 		
@@ -252,9 +263,6 @@ public class PlayerMovement : MonoBehaviour
 			altitude = hit.distance;
 			if (adjacentSolid > altitude)
 				adjacentSolid = altitude;
-			if (downSolid > altitude)
-				downSolid = altitude;
-			//down's special, use it to test for climbing walls with jumps
 		} else {
 			if (Physics.Raycast (transform.position + (Vector3.up * 9999f), Vector3.down, out hit, 99999f, onlyTerrains)) {
 				transform.position = hit.point + Vector3.up;
@@ -263,36 +271,37 @@ public class PlayerMovement : MonoBehaviour
 			}
 		}
 
-		if (adjacentSolid < 1) {
-			float bumpUp = transform.position.y + ((1 - adjacentSolid) / 32);
+		if (adjacentSolid < 1f) {
+			float bumpUp = transform.position.y + ((1f - adjacentSolid) / 32f);
 			transform.position = new Vector3 (transform.position.x, bumpUp, transform.position.z);
 			//this keeps us off the ground
-			adjacentSolid = 1;
+			reflected = false;
+			adjacentSolid = 1f;
 		}
 		//thus we can only maneuver if we are near a surface
 		
 		adjacentSolid *= adjacentSolid;
 		adjacentSolid *= adjacentSolid;
 		
-		if (desiredMove.y > 0) {
+		if (desiredMove.y > 0f) {
 			float angle = Vector3.Angle (groundContactNormal, Vector3.up);
 			moveLimit = slopeCurveModifier.Evaluate (angle);
 			//apply a slope based limiting factor
 			
 			desiredMove *= moveLimit;
-			desiredMove.y *= moveLimit;
-			//we can't climb but we can go down all we want
-			//try to restrict vertical movement more than lateral movement
 		}
 
-		float momentum = Mathf.Sqrt (Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity) + 4f + mouseDrag) * 0.1f;
-		//4 controls the top speed, 0.1 controls maximum clamp when turning
+		float momentum = Mathf.Sqrt (Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity) + 2f + mouseDrag) * 0.1f;
+		//3 controls the top speed, 0.1 controls maximum clamp when turning
 		if (momentum < 0.001f)
 			momentum = 0.001f; //insanity check
-		if (momentum > adjacentSolid)
-			momentum = adjacentSolid; //insanity check
 		if (adjacentSolid < 1f)
 			adjacentSolid = 1f; //insanity check
+		if (momentum > adjacentSolid)
+			momentum = adjacentSolid; //insanity check
+
+		momentum += (rigidBody.velocity.sqrMagnitude * 0.0001f);
+
 		desiredMove /= (adjacentSolid + mouseDrag);
 		//we're adding the move to the extent that we're near a surface
 		rigidBody.drag = momentum / adjacentSolid;
@@ -316,15 +325,17 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-			if (setupbots.gameEnded && (Input.GetButton ("MouseJump") || Input.GetButton ("KeyboardJump"))) {
+			if (reflected == false && (transform.position.y < -1f || transform.position.y > (terrainHeight + 1000f))) {
+				rigidBody.velocity = -rigidBody.velocity;
+				reflected = true;
+			}
+
+			if (setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
 				//trigger new level load on completing of level
 				//we have already updated the score and saved prefs
 				Application.LoadLevel ("Scene");
 			}
-
-			timeBetweenGuardians *= 0.995f;
-			//with this factor we scale how sensitive guardians are to bots bumping each other
-
+					
 			if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
 				//we are playing the smashing sounds of the giant guardians
 			} else {
@@ -355,7 +366,12 @@ public class PlayerMovement : MonoBehaviour
 				}
 				//this is our geiger counter for our bot
 			}
-
+			if (botNumber < totalBotNumber) {
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
+			} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
+			//uses totalBotNumber because if we start killing them, the top number goes down!
+			//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
+			
 			yield return playerWait;
 
 			cameraZoom = (Mathf.Sqrt (rigidBody.velocity.magnitude + 2f) * 2f) + (initialUpDown * 4f) + (playerPosition.y / 200f);
@@ -381,13 +397,20 @@ public class PlayerMovement : MonoBehaviour
 				backgroundSound.brightness = (transform.position.y / 900.0f) + 0.1f;
 			}
 
-			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.6f);
+			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			yield return playerWait;
 
-			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.65f);
+			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			float recip = 1.0f / backgroundSound.gain;
 			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
 			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 10.0f));
+
+			if (botNumber < totalBotNumber) {
+				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
+			} //generate a bot if we don't have 500 and our FPS is at least 58. Works for locked framerate too as that's bound to 60
+			//uses totalBotNumber because if we start killing them, the top number goes down!
+			//thus, if we have insano framerates, the bots can spawn incredibly fast, but it'll sort of ride the wave if it begins to chug
+
 			yield return playerWait;
 
 			if (transform.position.y < -10) {

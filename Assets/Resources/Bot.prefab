@@ -228,7 +228,7 @@ MonoBehaviour:
   BotCrash: {fileID: 8300000, guid: 733ccb3b849654c3d869d2a903bc0e94, type: 3}
   BotCrashTinkle: {fileID: 8300000, guid: a51262161a3d348459f460b649e86633, type: 3}
   BotBeep: {fileID: 8300000, guid: e9a7e356d1eea44fb8cd90fc93784c6d, type: 3}
-  happyEnding: {fileID: 8300000, guid: 2412e2307974a4ce7b158938d9d9ecf8, type: 3}
+  NewLevelAcquire: {fileID: 0}
   botBrain: []
   brainPointer: 0
   voicePointer: 0

@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 public class SetUpBots : MonoBehaviour {
@@ -26,6 +27,7 @@ public class SetUpBots : MonoBehaviour {
 		botParent = GameObject.FindGameObjectWithTag ("AllBots");
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
 		playermovement = ourhero.GetComponent<PlayerMovement>();
+		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 	}
 	
 	void Start () {
@@ -33,13 +35,12 @@ public class SetUpBots : MonoBehaviour {
 		gameEnded = false;
 		killed = false;
 
-		float terrainHeight = 1f + (Mathf.Pow(playermovement.residueSequence,3) % (PlayerMovement.levelNumber * 10));
-		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (1000f, terrainHeight, 1000f);
+		baseTerrain.GetComponent<Terrain> ().terrainData.size = new Vector3 (1000f, playermovement.terrainHeight, 1000f);
 		//must be after Awake so we can get the level number in Player
 
 
 
-		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 99999f, PlayerMovement.playerPosition.z);
+		PlayerMovement.playerPosition = new Vector3 (PlayerMovement.playerPosition.x, 4999f, PlayerMovement.playerPosition.z);
 		if (Physics.Raycast (PlayerMovement.playerPosition, Vector3.down, out hit)) PlayerMovement.playerPosition = hit.point + Vector3.up;
 		playermovement.transform.position = PlayerMovement.playerPosition;
 		//we only need to access position, because position might need to be updated.
@@ -54,7 +55,9 @@ public class SetUpBots : MonoBehaviour {
 		yourMatch = Random.Range(0, botTexture.Length);
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
+		logo.GetComponent<Text>().text = string.Format ("Level {0:0.}: Catch ", PlayerMovement.levelNumber) + botTexture[yourMatch].ToString().Substring(0, botTexture[yourMatch].ToString().Length - 24);
 
+		
 		Texture2D ourTexture = botTexture [yourMatch];
 		playermovement.ourbody.material.mainTexture = ourTexture;
 		playermovement.ourbody.material.color = new Color (0.5f, 0.5f, 0.5f);
@@ -114,12 +117,11 @@ public class SetUpBots : MonoBehaviour {
 		//this is giving us 360 degree hue, and then saturation and luminance.
 		float botDistance = Mathf.Abs (1f - color.s) * playermovement.startAtRange;
 		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
-		Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
+		Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 4999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 		//aim bot at target
 
 		if (Physics.Raycast (spawnLocation, Vector3.down, out hit, 99999f))
 			spawnLocation = hit.point + Vector3.up;
-
 
 		myBot.transform.position = spawnLocation;
 		botmovement.botTarget = spawnLocation;
