@@ -230,6 +230,7 @@ public class BotMovement : MonoBehaviour
 				if (combined > (100 - Math.Sqrt (PlayerMovement.levelNumber))) {
 					botTarget = transform.position + ((transform.position - ourhero.transform.position) * (combined * PlayerMovement.levelNumber));
 					//when dissimilar bots hit each other, they flee each other
+					guardianmovement.guardianCooldown += playermovement.guardianPissyFactor;
 					guardianmovement.locationTarget = transform.position;
 					//and when bots hit each other the Guardian goes to see.
 				}

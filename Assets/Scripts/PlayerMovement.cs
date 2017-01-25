@@ -78,6 +78,7 @@ public class PlayerMovement : MonoBehaviour
 	public float creepToRange;
 	public float startAtRange;
 	public float creepRotAngle = 1f;
+	public float guardianPissyFactor;
 	public int residueSequence = 1;
 	private float velCompensated = 0.00025f;
 	private Vector3 positionOffset = new Vector3 (20f, -20f, 0f);
@@ -106,19 +107,37 @@ public class PlayerMovement : MonoBehaviour
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
 		reflected = false;
-		residueSequence = (int)Mathf.Pow (levelNumber, 4);
+		residueSequence = (int)Mathf.Pow (levelNumber, 4) % 90125;
 		startAtRange = ((Mathf.Pow (residueSequence, 2) % Mathf.Pow (PlayerMovement.levelNumber, 2)) % 300) + 10;
 		creepRotAngle = (residueSequence % 359);
-		botNumber = (int)(Mathf.Pow (PlayerMovement.levelNumber, 2) % 900) + 2;
-		if (botNumber < 700)
-			botNumber = botNumber % 300;
+		guardianPissyFactor = (((Mathf.Pow (residueSequence % 666, 4) / 1000f) / 1000f) / 1000f) / 1000f;
+		guardianPissyFactor *= guardianPissyFactor;
+		botNumber = (int)(Mathf.Pow (PlayerMovement.levelNumber, 2) % 900);
+		if (botNumber < 850)
+			botNumber = botNumber % 400;
 		//more likely to get WTF crowds, but typically it's more moderate
+		if (botNumber < 1)
+			botNumber = 1;
 		totalBotNumber = botNumber;
 		creepToRange = ((residueSequence % botNumber) % 468) + Mathf.Sqrt (botNumber);
-		terrainHeight = ((Mathf.Pow (residueSequence, 2) % 20) + Mathf.Pow (Mathf.Pow (residueSequence, 5) % levelNumber, 2)) % 700;
-		if (terrainHeight < 680)
-			terrainHeight = terrainHeight % 400;
+		terrainHeight = ((Mathf.Pow (residueSequence, 2) % 20) + Mathf.Pow (Mathf.Pow (residueSequence, 5) % levelNumber, 2)) % 999;
+		if (terrainHeight < 900f)
+			terrainHeight = terrainHeight % 300;
 		//leave a few WTF levels in there but most will be usable
+		if (terrainHeight < 1f)
+			terrainHeight = 1f;
+		//leave a few WTF levels in there but most will be usable
+		baseJump = Mathf.Max (2, terrainHeight / 100);
+		//must be able to navigate the sillyheights
+		if (levelNumber > 501) {
+			terrainHeight = 1f;
+			guardianPissyFactor = 1f;
+			botNumber = 1000;
+			totalBotNumber = 1000;
+			startAtRange = 1f;
+			creepToRange = 1f;
+		}
+
 	}
 
 	void Start ()
@@ -161,7 +180,7 @@ public class PlayerMovement : MonoBehaviour
 			tempMouse = (Mathf.Sqrt (tempMouse + 81f) - 9f) / mouseSensitivity;
 		if (tempMouse < 0)
 			tempMouse = -(Mathf.Sqrt (-tempMouse + 81f) - 9f) / mouseSensitivity;
-		initialTurn = Mathf.Lerp(initialTurn, initialTurn-tempMouse, 0.618f);
+		initialTurn = Mathf.Lerp (initialTurn, initialTurn - tempMouse, 0.618f);
 		mouseDrag = Mathf.Abs (tempMouse); //maximum of h and v is used later as a physics drag factor
 		
 		tempMouse = Input.GetAxisRaw ("MouseY");
@@ -169,7 +188,7 @@ public class PlayerMovement : MonoBehaviour
 			tempMouse = (Mathf.Sqrt (tempMouse + 81f) - 9f) / mouseSensitivity;
 		if (tempMouse < 0)
 			tempMouse = -(Mathf.Sqrt (-tempMouse + 81f) - 9f) / mouseSensitivity;
-		initialUpDown = Mathf.Lerp(initialUpDown, initialUpDown+tempMouse, 0.618f);
+		initialUpDown = Mathf.Lerp (initialUpDown, initialUpDown + tempMouse, 0.618f);
 		if (Mathf.Abs (tempMouse) > mouseDrag)
 			mouseDrag = Mathf.Abs (tempMouse); //physics drag factor
 
@@ -329,6 +348,18 @@ public class PlayerMovement : MonoBehaviour
 				rigidBody.velocity = -rigidBody.velocity;
 				reflected = true;
 			}
+
+			/* if (!setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
+				//with that, we switch off the bot this is
+				setupbots.gameEnded = true;
+				levelNumber += 1;
+				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
+				locationOfCounterpart = Vector3.zero;
+				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
+				PlayerPrefs.Save ();
+				Application.LoadLevel ("Scene");
+			} //cheat to skip ahead with a level */
+
 
 			if (setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
 				//trigger new level load on completing of level
