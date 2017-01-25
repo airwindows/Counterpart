@@ -311,7 +311,7 @@ public class PlayerMovement : MonoBehaviour
 		}
 
 		float momentum = Mathf.Sqrt (Vector3.Angle (mainCamera.transform.forward, rigidBody.velocity) + 2f + mouseDrag) * 0.1f;
-		//3 controls the top speed, 0.1 controls maximum clamp when turning
+		//2 controls the top speed, 0.1 controls maximum clamp when turning
 		if (momentum < 0.001f)
 			momentum = 0.001f; //insanity check
 		if (adjacentSolid < 1f)

@@ -278,6 +278,7 @@ public class BotMovement : MonoBehaviour
 					botZapsParticles.Emit (1);
 				}
 				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
+				//and if it is sufficiently friendly
 			}
 			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.zero, 0.5f);
 		}
