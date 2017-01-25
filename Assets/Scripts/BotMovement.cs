@@ -241,7 +241,8 @@ public class BotMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		if (shotBy.CompareTag ("playerPackets") || true) {
+		if (shotBy.CompareTag ("playerPackets") || rigidBody.velocity.magnitude < 0.01f) {
+			//either a player shot, or this bot is sitting still
 			voicePointer += 1;
 			if (voicePointer >= botBrain.Length)
 				voicePointer = 0;
@@ -271,7 +272,7 @@ public class BotMovement : MonoBehaviour
 					botTarget = ourhero.transform.position;
 				//zap your counterpart and it rushes to meet you IF the guardian is mad at you.
 
-				if (overThere != Vector3.zero && voicePitch > 1f) {
+				if (overThere != Vector3.zero && voicePitch > 1.5f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.Emit (1);
