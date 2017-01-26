@@ -149,7 +149,7 @@ public class PlayerMovement : MonoBehaviour
 		endPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
-		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 400f), 1000f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 400f));
+		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 500f), 100f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 500f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		StartCoroutine ("SlowUpdates");
