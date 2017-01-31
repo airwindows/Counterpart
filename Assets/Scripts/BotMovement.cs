@@ -35,6 +35,7 @@ public class BotMovement : MonoBehaviour
 	private int brainR;
 	private int brainG;
 	private int brainB;
+	private int brainBright;
 	public int step;
 	private SphereCollider sphereCollider;
 	private Rigidbody rigidBody;
@@ -109,14 +110,14 @@ public class BotMovement : MonoBehaviour
 				//freeze, in shock and delight!	
 				AudioSource externalSource = GameObject.FindGameObjectWithTag ("overheadLight").GetComponent<AudioSource> ();
 				externalSource.Stop ();
-				externalSource.clip = BotBeep;
-				externalSource.pitch = 3f;
-				externalSource.volume = 2f;
-				externalSource.reverbZoneMix = 2f;
-				externalSource.spatialBlend = 2f;
+				externalSource.clip = NewLevelAcquire;
+				externalSource.pitch = 1f;
+				externalSource.volume = 1f;
+				externalSource.reverbZoneMix = 0f;
+				externalSource.spatialBlend = 0f;
 				//switch the earthquake FX to normal stereo, music playback
 				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
-				externalSource.Play();
+				externalSource.PlayOneShot (NewLevelAcquire, 1f);
 				notEnded = false;
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
@@ -177,8 +178,8 @@ public class BotMovement : MonoBehaviour
 					if (notEnded && withinRange) {
 						if (audioSource.clip != BotBeep)
 							audioSource.clip = BotBeep;
-						audioSource.volume = 2f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
-						audioSource.reverbZoneMix = 0.01f;
+						//audioSource.volume = 2f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
+						//audioSource.reverbZoneMix = 0.01f;
 						float voicePitch = 2.9f - ((center + left + right) * 0.006f);
 						if (voicePitch > 0f)
 							audioSource.pitch = voicePitch;
@@ -208,12 +209,12 @@ public class BotMovement : MonoBehaviour
 					if (notEnded && withinRange) {
 						if (audioSource.clip != BotBeep)
 							audioSource.clip = BotBeep;
-						audioSource.volume = 3f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
-						audioSource.reverbZoneMix = 0.01f;
+						//audioSource.volume = 3f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
+						//audioSource.reverbZoneMix = 0.01f;
 						brainR = botBrain [brainPointer].r;
 						brainG = botBrain [brainPointer].g;
 						brainB = botBrain [brainPointer].b;
-						audioSource.reverbZoneMix = Vector3.Distance (transform.position, ourhero.transform.position) / 420f;
+						//audioSource.reverbZoneMix = Vector3.Distance (transform.position, ourhero.transform.position) / 420f;
 						float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
 						if (voicePitch > 0.001f)
 							audioSource.pitch = voicePitch;
@@ -252,14 +253,14 @@ public class BotMovement : MonoBehaviour
 			if (notEnded && withinRange) {
 				if (audioSource.clip != BotBeep)
 					audioSource.clip = BotBeep;
-				audioSource.volume = 2f;
-				audioSource.reverbZoneMix = 0.01f;
+				//audioSource.volume = 2f;
+				//audioSource.reverbZoneMix = 0.01f;
 				float voicePitch = 2.9f - ((center + left + right) * 0.006f);
 				if (voicePitch > 0f)
 					audioSource.pitch = voicePitch;
 				if (playermovement.yourMatch == yourMatch) {
 					audioSource.pitch = 3f;
-					audioSource.volume = 2.5f;
+					//audioSource.volume = 2.5f;
 					//extra emphasis for the counterpart
 				}
 				if (!audioSource.isPlaying && audioSource.priority < 255)
@@ -403,7 +404,12 @@ public class BotMovement : MonoBehaviour
 			//if we won, hooray! Everybody pile on the lucky bot! :D
 			yield return shortWait;
 
-			if (step >= (botBrain [brainPointer].b)) {
+			brainR = botBrain [brainPointer].r;
+			brainG = botBrain [brainPointer].g;
+			brainB = botBrain [brainPointer].b;
+			brainBright = brainR + brainG + brainB;
+
+			if (step >= (64-(int)(Math.Sqrt(brainBright)*2f))) {
 				step = 0;
 				//here's where we do the bot manevuerings
 				//note that step will always start at zero, so we can go above to where it's updated
@@ -415,25 +421,22 @@ public class BotMovement : MonoBehaviour
 					brainPointer = 0;
 				voicePointer = brainPointer;
 				//start voicepointer at more randomized spot per bot
-				brainR = botBrain [brainPointer].r;
-				brainG = botBrain [brainPointer].g;
-				brainB = botBrain [brainPointer].b;
 				//we establish a new target location based on this color
 				//and then it beeps, either verbed or not
 				if (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
 					if (notEnded && withinRange) {
 						if (audioSource.clip != BotBeep)
 							audioSource.clip = BotBeep;
-						audioSourceVolume = 8f / Vector3.Distance (transform.position, ourhero.transform.position);
+						audioSourceVolume = 16f / Vector3.Distance (transform.position, ourhero.transform.position);
 						if (audioSourceVolume > 1f)
 							audioSourceVolume = 1f;
 						audioSource.volume = audioSourceVolume;
 						audioSource.priority = (int)Vector3.Distance (transform.position, ourhero.transform.position);
-						audioSource.reverbZoneMix = 0.01f;
-						float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
+						audioSource.reverbZoneMix = (1f - audioSource.volume) / 8f;
+						float voicePitch = 2.9f - (brainBright * 0.006f);
 						if (voicePitch > 0f)
 							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying && audioSource.priority < 50)
+						if (!audioSource.isPlaying)
 							audioSource.Play ();
 						//bot makes a remark
 					} else
@@ -443,16 +446,16 @@ public class BotMovement : MonoBehaviour
 					if (notEnded && withinRange) {
 						if (audioSource.clip != BotBeep)
 							audioSource.clip = BotBeep;
-						audioSourceVolume = 8f / Vector3.Distance (transform.position, ourhero.transform.position);
+						audioSourceVolume = 16f / Vector3.Distance (transform.position, ourhero.transform.position);
 						if (audioSourceVolume > 1f)
 							audioSourceVolume = 1f;
 						audioSource.volume = audioSourceVolume;
 						audioSource.priority = (int)Vector3.Distance (transform.position, ourhero.transform.position);
 						audioSource.reverbZoneMix = 1f - audioSource.volume;
-						float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
+						float voicePitch = 2.9f - (brainBright * 0.006f);
 						if (voicePitch > 0f)
 							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying && audioSource.priority < 255)
+						if (!audioSource.isPlaying)
 							audioSource.Play ();
 						//bot makes a remark
 					} else
@@ -501,12 +504,12 @@ public class BotMovement : MonoBehaviour
 					if (distance < 90) {
 						meshfilter.mesh = meshLOD2;
 					} else {
-						withinRange = false;
-						//not closer than 80
 						if (distance < 180) {
 							meshfilter.mesh = meshLOD3;
 						} else {
 							meshfilter.mesh = meshLOD4;
+							withinRange = false;
+							//not closer than 180
 						}
 					}
 				}

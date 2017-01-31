@@ -42,8 +42,8 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 151622}
-  m_LocalRotation: {x: .280831009, y: -.692667186, z: .569976389, w: .341281652}
-  m_LocalPosition: {x: 629.548767, y: 16.8999996, z: 3395.55054}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 470806}
@@ -124,8 +124,8 @@ AudioSource:
   Mute: 0
   Priority: 128
   DopplerLevel: 0
-  MinDistance: 1
-  MaxDistance: 16
+  MinDistance: .100000001
+  MaxDistance: 40
   Pan2D: -0
   rolloffMode: 0
   BypassEffects: 1
@@ -134,23 +134,23 @@ AudioSource:
   rolloffCustomCurve:
     serializedVersion: 2
     m_Curve:
-    - time: .053989362
-      value: .962285697
-      inSlope: -16.0063992
-      outSlope: -16.0063992
+    - time: .00456549227
+      value: 1.00370371
+      inSlope: -8.79977417
+      outSlope: -8.79977417
       tangentMode: 0
-    - time: .125
-      value: .5
+    - time: .0897355154
+      value: .481481493
       inSlope: -4.00159979
       outSlope: -4.00159979
       tangentMode: 0
-    - time: .25
-      value: .25
+    - time: .239924431
+      value: .194444448
       inSlope: -1.00039995
       outSlope: -1.00039995
       tangentMode: 0
-    - time: .5
-      value: .125
+    - time: .482367754
+      value: .0731481463
       inSlope: -.250099987
       outSlope: -.250099987
       tangentMode: 0
@@ -196,13 +196,13 @@ AudioSource:
     m_Curve:
     - time: 0
       value: 0
-      inSlope: .164126977
-      outSlope: .164126977
+      inSlope: -.0601790212
+      outSlope: -.0601790212
       tangentMode: 0
     - time: 1
-      value: .867428541
-      inSlope: 3.32357216
-      outSlope: 3.32357216
+      value: .989650786
+      inSlope: 1.35818684
+      outSlope: 1.35818684
       tangentMode: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -228,7 +228,7 @@ MonoBehaviour:
   BotCrash: {fileID: 8300000, guid: 733ccb3b849654c3d869d2a903bc0e94, type: 3}
   BotCrashTinkle: {fileID: 8300000, guid: a51262161a3d348459f460b649e86633, type: 3}
   BotBeep: {fileID: 8300000, guid: e9a7e356d1eea44fb8cd90fc93784c6d, type: 3}
-  NewLevelAcquire: {fileID: 0}
+  NewLevelAcquire: {fileID: 8300000, guid: 5b202cd451b724c478e3801d3f8e07e7, type: 3}
   botBrain: []
   brainPointer: 0
   voicePointer: 0
@@ -252,7 +252,115 @@ Prefab:
   serializedVersion: 2
   m_Modification:
     m_TransformParent: {fileID: 0}
-    m_Modifications: []
+    m_Modifications:
+    - target: {fileID: 0}
+      propertyPath: rolloffMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[0].time
+      value: .00456549227
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[0].value
+      value: 1.00370371
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[4].value
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[0].inSlope
+      value: -8.79977417
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[0].outSlope
+      value: -8.79977417
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[1].time
+      value: .0897355154
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[1].value
+      value: .481481493
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[2].value
+      value: .194444448
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[2].time
+      value: .239924431
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[3].time
+      value: .482367754
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: rolloffCustomCurve.m_Curve.Array.data[3].value
+      value: .0731481463
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[1].value
+      value: .989650786
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[1].inSlope
+      value: 1.35818684
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[1].outSlope
+      value: 1.35818684
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: MaxDistance
+      value: 40
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: NewLevelAcquire
+      value: 
+      objectReference: {fileID: 8300000, guid: 5b202cd451b724c478e3801d3f8e07e7, type: 3}
+    - target: {fileID: 0}
+      propertyPath: MinDistance
+      value: .100000001
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[0].inSlope
+      value: -.0601790212
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[0].outSlope
+      value: -.0601790212
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 0}
   m_RootGameObject: {fileID: 151622}

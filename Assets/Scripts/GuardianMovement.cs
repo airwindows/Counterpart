@@ -29,7 +29,7 @@ public class GuardianMovement : MonoBehaviour {
 	private GameObject level;
 	private GameObject logo;
 
-	WaitForSeconds guardianWait = new WaitForSeconds(0.02f);
+	WaitForSeconds guardianWait = new WaitForSeconds(0.01f);
 
 
 	void Awake ()
@@ -59,10 +59,19 @@ public class GuardianMovement : MonoBehaviour {
 			//we aren't messing with it. Hopefully this can give a unbreaking end music play
 		} else {
 			if (!externalSource.isPlaying) {
-				externalSource.reverbZoneMix = crashScale * 0.00022f;
 				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
 				externalSource.pitch = 0.34f - (crashScale * 0.0033f);
-				externalSource.volume = 8f / crashScale;
+				if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false) {
+					//returns true if there's anything in the way. false means line of sight.
+					externalSource.reverbZoneMix = crashScale * 0.00022f;
+					externalSource.volume = 8f / crashScale;
+				} else {
+					//occluded, more distant
+					externalSource.reverbZoneMix = crashScale * 0.00044f;
+					externalSource.volume = 4f / crashScale;
+				}
+
+
 				externalSource.priority = 3;
 				externalSource.Play ();
 			}
@@ -158,15 +167,19 @@ public class GuardianMovement : MonoBehaviour {
 			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 			audiosource.pitch = pitch;
 			audiosource.priority = 4;
-			float targetVolume = 0.1f;
+			audiosource.reverbZoneMix = 0.6f - pitch;
+			float targetVolume = 0.05f;
 			if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false) {
 				//returns true if there's anything in the way. false means line of sight.
-				targetVolume = 0.2f;
+				targetVolume = 0.15f;
+			} else {
+				//since there's something in the way, let's tame the beast
+				guardianCooldown *= 0.9f;
 			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;
 
-			audiosource.volume = Mathf.Lerp (audiosource.volume, targetVolume, 0.0001f + (guardianCooldown * 0.001f));
+			audiosource.volume = Mathf.Lerp (audiosource.volume, targetVolume, 0.1f);
 			//ramp up fast but switch off more slowly.
 
 			yield return guardianWait;

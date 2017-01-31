@@ -377,21 +377,23 @@ public class PlayerMovement : MonoBehaviour
 					if (ourlevel.GetComponent<SetUpBots> ().gameEnded == false) {
 						if (audiosource.clip != botBeep)
 							audiosource.clip = botBeep;
-						if (yourMatchOccluded) {
-							audiosource.volume = 0.275f;
-							audiosource.reverbZoneMix = 1f;
-						} else {
-							audiosource.volume = 0.3f;
-							audiosource.reverbZoneMix = 0.3f;
-						}
-						if (yourMatchDistance > 100) {
-							audiosource.volume = 0.25f;
-							audiosource.reverbZoneMix = 2.0f;
-							if (yourMatchDistance > 200) {
-								audiosource.volume = 0.2f;
-								audiosource.reverbZoneMix = 4.0f;
-							}
-						}
+						audiosource.volume = 0.2f;
+						audiosource.reverbZoneMix = 0f;
+			//			if (yourMatchOccluded) {
+			//				audiosource.volume = 0.275f;
+			//				audiosource.reverbZoneMix = 1f;
+			//			} else {
+			//				audiosource.volume = 0.3f;
+			//				audiosource.reverbZoneMix = 0.3f;
+			//			}
+			//			if (yourMatchDistance > 100) {
+			//				audiosource.volume = 0.25f;
+			//				audiosource.reverbZoneMix = 2.0f;
+			//				if (yourMatchDistance > 200) {
+			//					audiosource.volume = 0.2f;
+			//					audiosource.reverbZoneMix = 4.0f;
+			//				}
+			//			}
 						audiosource.Play ();
 					}
 				}
@@ -414,7 +416,6 @@ public class PlayerMovement : MonoBehaviour
 				guardianmovement.locationTarget = transform.position;
 				//call the guardian!
 				backgroundSound.whoosh *= 0.999f;
-				backgroundSound.gain *= 0.999f;
 				backgroundSound.brightness *= 0.999f;
 				//dead players don't whoosh, nor do they whoosh falling out of the world
 			} else {
@@ -425,16 +426,16 @@ public class PlayerMovement : MonoBehaviour
 					backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
 					backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.00003f);
 				}
-				backgroundSound.brightness = (transform.position.y / 900.0f) + 0.1f;
 			}
+			backgroundSound.brightness = (transform.position.y / 900.0f) + 0.1f;
 
 			mainCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
 			yield return playerWait;
 
 			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
-			float recip = 1.0f / backgroundSound.gain;
-			recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
-			recip = Mathf.Min (100.0f, Mathf.Sqrt (recip + 10.0f));
+			//float recip = 1.0f / backgroundSound.gain;
+			//recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
+			//recip = Mathf.Min (10.0f, Mathf.Sqrt (recip + 10.0f));
 
 			if (botNumber < totalBotNumber) {
 				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);
@@ -451,7 +452,7 @@ public class PlayerMovement : MonoBehaviour
 
 			skyboxCamera.fieldOfView = baseFOV + (cameraZoom * 0.7f);
 
-			backgroundSound.gain = 1.0f / recip;
+			backgroundSound.gain = 1.0f; // / recip;
 
 			botNumber = allbots.transform.childCount;
 			if (botNumber > totalBotNumber)
