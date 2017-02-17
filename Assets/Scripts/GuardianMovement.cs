@@ -28,6 +28,7 @@ public class GuardianMovement : MonoBehaviour {
 	private SetUpBots setupbots;
 	private GameObject level;
 	private GameObject logo;
+	private GameObject devnotes;
 
 	WaitForSeconds guardianWait = new WaitForSeconds(0.01f);
 
@@ -48,6 +49,7 @@ public class GuardianMovement : MonoBehaviour {
 		playermovement = ourhero.GetComponent<PlayerMovement>();
 		level = GameObject.FindGameObjectWithTag ("Level");
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+		devnotes = GameObject.FindGameObjectWithTag ("instructionScreen");
 		setupbots = level.GetComponent<SetUpBots>();
 		StartCoroutine ("SlowUpdates");
 	}
@@ -81,6 +83,8 @@ public class GuardianMovement : MonoBehaviour {
 				ourhero.GetComponent<Rigidbody> ().angularDrag = 0.6f;
 				setupbots.gameEnded = true;
 				setupbots.killed = true;
+				GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop();
+
 				Destroy (playermovement);
 				externalSource.clip = BotCrashTinkle;
 				externalSource.reverbZoneMix = 0f;
@@ -90,6 +94,7 @@ public class GuardianMovement : MonoBehaviour {
 				externalSource.Play();
 				//
 				logo.GetComponent<Text>().text = "Game Over";
+				devnotes.GetComponent<Text>().text = " ";
 				guardianCooldown = 0f;
 				PlayerPrefs.SetInt ("levelNumber", 1);
 				PlayerPrefs.Save();
@@ -143,16 +148,12 @@ public class GuardianMovement : MonoBehaviour {
 			if (churnCoreVisuals * 3f < guardianCooldown)
 				locationTarget = ourhero.transform.position;
 			//alternate way to deal with hyper guardians?
-
-			if (setupbots.gameEnded == true) {
-				ourhero.GetComponent<Rigidbody> ().velocity = Vector3.zero;
-			}
-
 			yield return guardianWait;
 
 			Vector3 rawMove = locationTarget - transform.position;
 			rawMove = rawMove.normalized * 40f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
+			if (guardianCooldown > 7f) myRigidbody.velocity *= 0.86f;
 			if (guardianCooldown > 4f) guardianCooldown = 3f;
 			//safeguard against crazy psycho zapping around
 
@@ -174,7 +175,7 @@ public class GuardianMovement : MonoBehaviour {
 				targetVolume = 0.15f;
 			} else {
 				//since there's something in the way, let's tame the beast
-				guardianCooldown *= 0.9f;
+				guardianCooldown *= 0.99f;
 			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;

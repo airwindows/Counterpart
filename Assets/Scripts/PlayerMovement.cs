@@ -46,7 +46,9 @@ public class PlayerMovement : MonoBehaviour
 	private int pingTimer = 2;
 	private bool pingGeiger = false;
 	private BackgroundSound backgroundSound;
+	private AudioSource externalSource;
 	public AudioClip botBeep;
+	public AudioClip backgroundMusic;
 	public float baseFOV = 68f;
 	public float mouseSensitivity;
 	public float mouseDrag = 0f;
@@ -60,7 +62,6 @@ public class PlayerMovement : MonoBehaviour
 	private float yRot = 0f;
 	private float yCorrect = 0f;
 	private float zRot = 0f;
-	private bool reflected;
 	public float terrainHeight;
 	public float clampRotateAngle = Mathf.PI * 2f;
 	public Vector3 desiredAimOffsetPosition;
@@ -106,7 +107,6 @@ public class PlayerMovement : MonoBehaviour
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
-		reflected = false;
 		residueSequence = (int)Mathf.Pow (levelNumber, 4) % 90125;
 		startAtRange = ((Mathf.Pow (residueSequence, 2) % Mathf.Pow (PlayerMovement.levelNumber, 2)) % 300) + 10;
 		creepRotAngle = (residueSequence % 359);
@@ -154,6 +154,23 @@ public class PlayerMovement : MonoBehaviour
 		//set up the scary monster to be faaaar away to start. It will circle.
 		StartCoroutine ("SlowUpdates");
 		//start this only once with a continuous loop inside the coroutine
+
+		audiosource.pitch = 1f;
+		if (audiosource.clip != botBeep)
+			audiosource.clip = botBeep;
+		audiosource.volume = 0.2f;
+		audiosource.reverbZoneMix = 0f;
+		audiosource.Play ();
+		//this is our geiger counter for our bot
+		externalSource = GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ();
+		externalSource.Stop ();
+		externalSource.clip = backgroundMusic;
+		externalSource.pitch = 1f;
+		externalSource.volume = 1f;
+		externalSource.reverbZoneMix = 0f;
+		externalSource.spatialBlend = 0f;
+		externalSource.loop = true;
+		externalSource.Play ();
 	}
 
 	void OnApplicationQuit ()
@@ -248,6 +265,7 @@ public class PlayerMovement : MonoBehaviour
 		//For this reason, if framerate is known to be always higher than 50fps, stuff can be put here to help the engine run faster
 		//but if framerate's running low, we are not actually getting a spaced out distribution of frames, only a staggering of them
 		//to allow physics to run correctly.
+		
 		playerPosition = transform.position;
 		playerRotation = transform.rotation;
 		Vector3 groundContactNormal;
@@ -294,7 +312,6 @@ public class PlayerMovement : MonoBehaviour
 			float bumpUp = transform.position.y + ((1f - adjacentSolid) / 32f);
 			transform.position = new Vector3 (transform.position.x, bumpUp, transform.position.z);
 			//this keeps us off the ground
-			reflected = false;
 			adjacentSolid = 1f;
 		}
 		//thus we can only maneuver if we are near a surface
@@ -344,9 +361,9 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//the notorious cursor code! Kills builds on Unity 5.2 and up
 
-			if (reflected == false && (transform.position.y < -1f || transform.position.y > (terrainHeight + 1000f))) {
-				rigidBody.velocity = -rigidBody.velocity;
-				reflected = true;
+			if (transform.position.y < -10f || transform.position.y > (terrainHeight + 1000f)) {
+				rigidBody.velocity = rigidBody.velocity * 0.5f;
+				guardianmovement.guardianCooldown = 8f;
 			}
 
 			/* if (!setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
@@ -361,16 +378,34 @@ public class PlayerMovement : MonoBehaviour
 			} //cheat to skip ahead with a level */
 
 
-			if (setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
-				//trigger new level load on completing of level
-				//we have already updated the score and saved prefs
-				Application.LoadLevel ("Scene");
+			if (externalSource != null) {
+				if (yourMatchOccluded) {
+					externalSource.reverbZoneMix = 1f;
+				} else {
+					externalSource.reverbZoneMix = 0.5f;
+				}
+				externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 3000f);
 			}
-					
+			
+			if (setupbots.gameEnded) {
+				if (externalSource != null) {
+					externalSource.pitch *= 0.98f;
+					externalSource.reverbZoneMix = 1f;
+					if (externalSource.pitch < 0.4f)
+						externalSource.Stop ();
+				}
+				if (Input.GetButton ("NextLevel")) {
+					//trigger new level load on completing of level
+					//we have already updated the score and saved prefs
+					Application.LoadLevel ("Scene");
+				}
+			}
+
+
 			if ((audiosource.clip != botBeep) && audiosource.isPlaying) {
 				//we are playing the smashing sounds of the giant guardians
 			} else {
-				audiosource.pitch = 3f;
+				audiosource.pitch = 1f;
 				if (pingGeiger == true) {
 					pingGeiger = false;
 					//reset trigger for our slow update ping
@@ -379,21 +414,6 @@ public class PlayerMovement : MonoBehaviour
 							audiosource.clip = botBeep;
 						audiosource.volume = 0.2f;
 						audiosource.reverbZoneMix = 0f;
-			//			if (yourMatchOccluded) {
-			//				audiosource.volume = 0.275f;
-			//				audiosource.reverbZoneMix = 1f;
-			//			} else {
-			//				audiosource.volume = 0.3f;
-			//				audiosource.reverbZoneMix = 0.3f;
-			//			}
-			//			if (yourMatchDistance > 100) {
-			//				audiosource.volume = 0.25f;
-			//				audiosource.reverbZoneMix = 2.0f;
-			//				if (yourMatchDistance > 200) {
-			//					audiosource.volume = 0.2f;
-			//					audiosource.reverbZoneMix = 4.0f;
-			//				}
-			//			}
 						audiosource.Play ();
 					}
 				}

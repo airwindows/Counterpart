@@ -107,19 +107,21 @@ public class BotMovement : MonoBehaviour
 			if ((playermovement.yourMatch == yourMatch) && (setupbots.gameEnded == false)) {
 				rigidBody.velocity = Vector3.zero;
 				lerpedMove = Vector3.zero;
-				//freeze, in shock and delight!	
+				//freeze, in shock and delight!
+
 				AudioSource externalSource = GameObject.FindGameObjectWithTag ("overheadLight").GetComponent<AudioSource> ();
 				externalSource.Stop ();
 				externalSource.clip = NewLevelAcquire;
 				externalSource.pitch = 1f;
-				externalSource.volume = 1f;
-				externalSource.reverbZoneMix = 0f;
+				externalSource.volume = 2f;
+				externalSource.reverbZoneMix = 2f;
 				externalSource.spatialBlend = 0f;
-				//switch the earthquake FX to normal stereo, music playback
-				//That ought to fix the end music cutoff, it checks to see if each earthquake is done already
+				externalSource.loop = false;
 				externalSource.PlayOneShot (NewLevelAcquire, 1f);
 				notEnded = false;
 				//with that, we switch off the bot this is
+
+
 				setupbots.gameEnded = true;
 				PlayerMovement.levelNumber += 1;
 				if (PlayerMovement.levelNumber < 1)
@@ -381,6 +383,7 @@ public class BotMovement : MonoBehaviour
 				transform.position = new Vector3 (transform.position.x + 1000f, transform.position.y, transform.position.z);
 			}
 
+			if (playermovement != null) {
 			if ((Physics.Linecast (transform.position, (playermovement.locationOfCounterpart + (transform.position - playermovement.locationOfCounterpart).normalized)) == false) && (playermovement.locationOfCounterpart.y < playermovement.terrainHeight)) {
 				//returns true if there's anything in the way. false means we can see counterpart, if it's not higher than the terrain it counts
 					if (playermovement.yourMatch == yourMatch)
@@ -388,6 +391,7 @@ public class BotMovement : MonoBehaviour
 					else
 						overThere = playermovement.locationOfCounterpart;
 					//now the bot knows where to emit particles when asked!
+				}
 			}
 
 			if (transform.position.z < 0f) {
@@ -517,7 +521,7 @@ public class BotMovement : MonoBehaviour
 			//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 			if (playermovement.yourMatch == yourMatch) {
-				playermovement.yourMatchDistance = Mathf.Sqrt(Vector3.Distance (transform.position, ourhero.transform.position));
+				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position)*4f; //Mathf.Sqrt()
 				playermovement.yourMatchOccluded = false;
 				playermovement.locationOfCounterpart = transform.position;
 				//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.

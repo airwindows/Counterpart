@@ -228,7 +228,7 @@ MonoBehaviour:
   BotCrash: {fileID: 8300000, guid: 733ccb3b849654c3d869d2a903bc0e94, type: 3}
   BotCrashTinkle: {fileID: 8300000, guid: a51262161a3d348459f460b649e86633, type: 3}
   BotBeep: {fileID: 8300000, guid: e9a7e356d1eea44fb8cd90fc93784c6d, type: 3}
-  NewLevelAcquire: {fileID: 8300000, guid: 5b202cd451b724c478e3801d3f8e07e7, type: 3}
+  NewLevelAcquire: {fileID: 8300000, guid: 9b2db6bfa9dd34ac1b07f887f3d98dd1, type: 3}
   botBrain: []
   brainPointer: 0
   voicePointer: 0
@@ -348,7 +348,7 @@ Prefab:
     - target: {fileID: 0}
       propertyPath: NewLevelAcquire
       value: 
-      objectReference: {fileID: 8300000, guid: 5b202cd451b724c478e3801d3f8e07e7, type: 3}
+      objectReference: {fileID: 8300000, guid: 9b2db6bfa9dd34ac1b07f887f3d98dd1, type: 3}
     - target: {fileID: 0}
       propertyPath: MinDistance
       value: .100000001
