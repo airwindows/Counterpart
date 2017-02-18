@@ -62,9 +62,10 @@ public class BotMovement : MonoBehaviour
 	private float squishRecoil = 0f;
 	private float squosh = 1f;
 	private GameObject logo;
+	private GameObject devnotes;
 	WaitForSeconds shortWait = new WaitForSeconds (0.01f);
-	Color dimColor = new Color (0.46f, 0.46f, 0.46f);
-	Color litColor = new Color (0.72f, 0.72f, 0.72f);
+	Color dimColor = new Color (0.45f, 0.45f, 0.45f);
+	Color litColor = new Color (0.71f, 0.71f, 0.71f);
 
 	void Awake ()
 	{
@@ -86,6 +87,8 @@ public class BotMovement : MonoBehaviour
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		notEnded = true;
 		overThere = Vector3.zero;
+		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
+		devnotes = GameObject.FindGameObjectWithTag ("instructionScreen");
 		if (yourMatch == playermovement.yourMatch) {
 			audioSource.priority = 2;
 		//	logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
@@ -127,7 +130,6 @@ public class BotMovement : MonoBehaviour
 				if (PlayerMovement.levelNumber < 1)
 					PlayerMovement.levelNumber = 1;
 
-				logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 				logo.GetComponent<Text> ().text = string.Format ("Success! Press e to go on to Level {0:0.}", PlayerMovement.levelNumber);
 
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
@@ -163,6 +165,16 @@ public class BotMovement : MonoBehaviour
 						Destroy (this);
 						//REKKT. Bot's brain is destroyed, after setting its color to dim.
 						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
+						if (playermovement.totalBotNumber < 1) {
+							setupbots.gameEnded = true;
+							setupbots.killed = true;
+							GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop();
+							logo.GetComponent<Text>().text = "Game Over";
+							devnotes.GetComponent<Text>().text = " ";
+							PlayerPrefs.SetInt ("levelNumber", 1);
+							PlayerPrefs.Save();
+							//if you hunt and kill all the bots in the win screen, you lose the level you're at
+						}
 						guardianmovement.guardianCooldown += (col.relativeVelocity.magnitude / 10f);
 						//lerp value, slowly diminishes.
 						guardianmovement.locationTarget = transform.position;
@@ -170,24 +182,6 @@ public class BotMovement : MonoBehaviour
 					}
 					audioSource.Play ();
 					//play if over 15 or more
-				} else {
-					voicePointer += 1;
-					if (voicePointer >= botBrain.Length)
-						voicePointer = 0;
-					int left = Math.Abs (playermovement.yourBrain [voicePointer].r - botBrain [voicePointer].r);
-					int right = Math.Abs (playermovement.yourBrain [voicePointer].g - botBrain [voicePointer].g);
-					int center = Math.Abs (playermovement.yourBrain [voicePointer].b - botBrain [voicePointer].b);
-					if (notEnded && withinRange) {
-						if (audioSource.clip != BotBeep)
-							audioSource.clip = BotBeep;
-						//audioSource.volume = 2f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
-						//audioSource.reverbZoneMix = 0.01f;
-						float voicePitch = 2.9f - ((center + left + right) * 0.006f);
-						if (voicePitch > 0f)
-							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying)
-							audioSource.Play ();
-					}
 				}
 			} //decide if it's a hit or a kiss
 			//with the player
@@ -244,8 +238,7 @@ public class BotMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		if (shotBy.CompareTag ("playerPackets") || rigidBody.velocity.magnitude < 0.01f) {
-			//either a player shot, or this bot is sitting still
+		if (shotBy.CompareTag ("playerPackets")) {
 			voicePointer += 1;
 			if (voicePointer >= botBrain.Length)
 				voicePointer = 0;
@@ -255,15 +248,11 @@ public class BotMovement : MonoBehaviour
 			if (notEnded && withinRange) {
 				if (audioSource.clip != BotBeep)
 					audioSource.clip = BotBeep;
-				//audioSource.volume = 2f;
-				//audioSource.reverbZoneMix = 0.01f;
 				float voicePitch = 2.9f - ((center + left + right) * 0.006f);
 				if (voicePitch > 0f)
 					audioSource.pitch = voicePitch;
 				if (playermovement.yourMatch == yourMatch) {
 					audioSource.pitch = 3f;
-					//audioSource.volume = 2.5f;
-					//extra emphasis for the counterpart
 				}
 				if (!audioSource.isPlaying && audioSource.priority < 255)
 					audioSource.Play ();
@@ -271,11 +260,11 @@ public class BotMovement : MonoBehaviour
 				myColor.material.color = litColor;
 				botZapsParticles.startSize = 4f;
 
-				if (playermovement.yourMatch == yourMatch && guardianmovement.guardianCooldown > 1f)
+				if (playermovement.yourMatch == yourMatch)
 					botTarget = ourhero.transform.position;
-				//zap your counterpart and it rushes to meet you IF the guardian is mad at you.
+				//zap your counterpart and it rushes to meet you
 
-				if (overThere != Vector3.zero && voicePitch > 1.5f) {
+				if (overThere != Vector3.zero && voicePitch > 1f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.Emit (1);
@@ -472,6 +461,7 @@ public class BotMovement : MonoBehaviour
 				SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 				//this is giving us 360 degree hue, and then saturation and luminance.
 				float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
+				if (botDistance > 400f) botDistance = 400f;
 				float adjustedHueAngle = color.h + playermovement.creepRotAngle;
 				Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 				//aim bot at target

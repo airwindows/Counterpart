@@ -119,7 +119,7 @@ public class PlayerMovement : MonoBehaviour
 		if (botNumber < 1)
 			botNumber = 1;
 		totalBotNumber = botNumber;
-		creepToRange = ((residueSequence % botNumber) % 468) + Mathf.Sqrt (botNumber);
+		creepToRange = ((residueSequence % botNumber) % 468) + (Mathf.Sqrt (botNumber)*4f);
 		terrainHeight = ((Mathf.Pow (residueSequence, 2) % 20) + Mathf.Pow (Mathf.Pow (residueSequence, 5) % levelNumber, 2)) % 999;
 		if (terrainHeight < 900f)
 			terrainHeight = terrainHeight % 300;
@@ -381,10 +381,11 @@ public class PlayerMovement : MonoBehaviour
 			if (externalSource != null) {
 				if (yourMatchOccluded) {
 					externalSource.reverbZoneMix = 1f;
+					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 2500f);
 				} else {
 					externalSource.reverbZoneMix = 0.5f;
+					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 5000f);
 				}
-				externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 3000f);
 			}
 			
 			if (setupbots.gameEnded) {

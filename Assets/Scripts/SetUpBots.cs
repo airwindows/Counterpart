@@ -265,6 +265,7 @@ public class SetUpBots : MonoBehaviour {
 		HSLColor color = HSLColor.FromRGBA (c);
 		//this is giving us 360 degree hue, and then saturation and luminance.
 		float botDistance = Mathf.Abs (1f - color.s) * playermovement.startAtRange;
+		if (botDistance > 400f) botDistance = 400f;
 		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
 		Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 4999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 		//aim bot at target

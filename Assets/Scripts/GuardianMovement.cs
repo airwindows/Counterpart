@@ -175,7 +175,7 @@ public class GuardianMovement : MonoBehaviour {
 				targetVolume = 0.15f;
 			} else {
 				//since there's something in the way, let's tame the beast
-				guardianCooldown *= 0.99f;
+				guardianCooldown *= 0.93f;
 			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;
