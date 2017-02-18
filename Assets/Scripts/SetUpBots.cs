@@ -19,6 +19,7 @@ public class SetUpBots : MonoBehaviour {
 	private Vector3 spawnLocationA;
 	private GameObject logo;
 	private GameObject talk;
+	private GameObject highscore;
 	//Texture array must be set up in the editor as LoadAll no worky
 	//to do this, lock the inspector and then select all textures and drag them onto the array
 	//this is also a single script that remains attached to the level
@@ -30,6 +31,7 @@ public class SetUpBots : MonoBehaviour {
 		playermovement = ourhero.GetComponent<PlayerMovement>();
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		talk = GameObject.FindGameObjectWithTag ("instructionScreen");
+		highscore = GameObject.FindGameObjectWithTag ("highscore");
 	}
 	
 	void Start () {
@@ -58,6 +60,7 @@ public class SetUpBots : MonoBehaviour {
 		playermovement.yourMatch = yourMatch;
 		playermovement.yourBrain = botTexture [yourMatch].GetPixels32 ();
 		logo.GetComponent<Text>().text = string.Format ("Level {0:0.}: Catch ", PlayerMovement.levelNumber) + botTexture[yourMatch].ToString().Substring(0, botTexture[yourMatch].ToString().Length - 24);
+		highscore.GetComponent<Text>().text = string.Format ("High Score: {0:0.}", PlayerMovement.maxlevelNumber);
 
 		//And now we put in the chatty little asides: scroll down to get past them
 		switch (PlayerMovement.levelNumber) {
@@ -266,7 +269,7 @@ public class SetUpBots : MonoBehaviour {
 		//this is giving us 360 degree hue, and then saturation and luminance.
 		float botDistance = Mathf.Abs (1f - color.s) * playermovement.startAtRange;
 		if (botDistance > 400f) botDistance = 400f;
-		float adjustedHueAngle = color.h + playermovement.creepRotAngle;
+		float adjustedHueAngle = color.h;
 		Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 4999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 		//aim bot at target
 

@@ -11,13 +11,14 @@ public class GuardianMovement : MonoBehaviour {
 	public AudioClip BotCrashTinkle;
 	private AudioSource externalSource;
 	private Rigidbody myRigidbody;
-	private Material guardianCore;
 	private Material guardianMiddle;
 	private Material guardianSurface;
 	private Material guardianAura;
+	private Material guardianFarAura;
 	private float churnCoreVisuals = 1f;
 	private float churnMiddleVisuals = 1f;
 	private float churnSurfaceVisuals = 1f;
+	private float churnFarVisuals = 1f;
 	private GameObject earthquakeLight;
 	private GameObject ourhero;
 	public Vector3 locationTarget;
@@ -37,10 +38,10 @@ public class GuardianMovement : MonoBehaviour {
 	{
 		audiosource = GetComponent<AudioSource>();
 		myRigidbody = GetComponent<Rigidbody>();
-		guardianCore = transform.Find ("Core").GetComponent<Renderer> ().material;
 		guardianMiddle = transform.Find ("Middle Layer").GetComponent<Renderer> ().material;
 		guardianSurface = transform.Find ("Surface Sphere").GetComponent<Renderer> ().material;
 		guardianAura = transform.Find ("Aura").GetComponent<Renderer> ().material;
+		guardianFarAura = transform.Find ("FarAura").GetComponent<Renderer> ().material;
 		earthquakeLight = GameObject.FindGameObjectWithTag ("overheadLight");
 		externalSource = earthquakeLight.GetComponent<AudioSource> ();
 		//the guardian's one of the more important sounds
@@ -52,6 +53,12 @@ public class GuardianMovement : MonoBehaviour {
 		devnotes = GameObject.FindGameObjectWithTag ("instructionScreen");
 		setupbots = level.GetComponent<SetUpBots>();
 		StartCoroutine ("SlowUpdates");
+		guardianMiddle.SetColor("_TintColor",  new Color (1f, 1f, 1f, 1f));
+		guardianSurface.SetColor("_TintColor",  new Color (1f, 1f, 1f, 1f));
+		guardianAura.SetColor("_TintColor", new Color (1f, 1f, 1f, 1f));
+		//note that it is NOT '_Color' that we are setting with the material dialog in Unity!
+		//since we have a glowing wireframe around a black hole, the tint is always brightest
+
 	}
 
 	void OnCollisionEnter(Collision col) {
@@ -62,18 +69,16 @@ public class GuardianMovement : MonoBehaviour {
 		} else {
 			if (!externalSource.isPlaying) {
 				externalSource.clip = earthquakes [Random.Range (0, earthquakes.Length)];
-				externalSource.pitch = 0.34f - (crashScale * 0.0033f);
+				externalSource.pitch = 0.45f - (crashScale * 0.008f);
 				if (Physics.Linecast (transform.position, (ourhero.transform.position + (transform.position - ourhero.transform.position).normalized)) == false) {
 					//returns true if there's anything in the way. false means line of sight.
-					externalSource.reverbZoneMix = crashScale * 0.00022f;
-					externalSource.volume = 8f / crashScale;
+					externalSource.reverbZoneMix = crashScale * 0.006f;
+					externalSource.volume = 12f / crashScale;
 				} else {
 					//occluded, more distant
-					externalSource.reverbZoneMix = crashScale * 0.00044f;
-					externalSource.volume = 4f / crashScale;
+					externalSource.reverbZoneMix = crashScale * 0.008f;
+					externalSource.volume = 10f / crashScale;
 				}
-
-
 				externalSource.priority = 3;
 				externalSource.Play ();
 			}
@@ -116,36 +121,25 @@ public class GuardianMovement : MonoBehaviour {
 	void FixedUpdate () {
 		churnCoreVisuals -= (0.001f + (guardianCooldown * 0.001f));
 		if (churnCoreVisuals < 0f) churnCoreVisuals += 1f;
-		churnMiddleVisuals -= (0.0012f + (guardianCooldown * 0.001f));
+		churnMiddleVisuals -= (0.0013f + (guardianCooldown * 0.0013f));
 		if (churnMiddleVisuals < 0f) churnMiddleVisuals += 1f;
-		churnSurfaceVisuals -= (0.0014f + (guardianCooldown * 0.001f));
+		churnSurfaceVisuals -= (0.0017f + (guardianCooldown * 0.0017f));
 		if (churnSurfaceVisuals < 0f) churnSurfaceVisuals += 1f;
+		churnFarVisuals -= (0.0021f + (guardianCooldown * 0.0021f));
+		if (churnFarVisuals < 0f) churnFarVisuals += 1f;
 		//the churning activity gets more intense as the thing animates
 
-		guardianCore.mainTextureOffset = new Vector2 (0, churnCoreVisuals); //core is the high res one
-		guardianMiddle.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //middle is a coarser layer
-		guardianSurface.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //surface is low-poly
-
-
-		Color guardianGlow = new Color (1f, 1f, 1f, 0.1f + (guardianCooldown * guardianCooldown * 0.02f));
-		guardianCore.SetColor("_TintColor", guardianGlow);
-
-		guardianGlow = new Color (1f, 1f, 1f, 0.08f + (guardianCooldown * guardianCooldown * 0.01f));
-		guardianMiddle.SetColor("_TintColor", guardianGlow);
-
-		guardianGlow = new Color (1f, 1f, 1f, 0.06f + (guardianCooldown * guardianCooldown * 0.005f));
-		guardianSurface.SetColor("_TintColor", guardianGlow);
-
-		guardianGlow = new Color (1f, 1f, 1f, 0.04f + (guardianCooldown * guardianCooldown * 0.0025f));
-		guardianAura.SetColor("_TintColor", guardianGlow);
-		//note that it is NOT '_Color' that we are setting with the material dialog in Unity!
-		}
+		guardianMiddle.mainTextureOffset = new Vector2 (0, churnCoreVisuals); //middle is a coarser layer
+		guardianSurface.mainTextureOffset = new Vector2 (0, churnMiddleVisuals); //surface is low-poly
+		guardianAura.mainTextureOffset = new Vector2 (0, churnSurfaceVisuals); //aura is high-poly but fast
+		guardianFarAura.mainTextureOffset = new Vector2 (0, churnFarVisuals); //aura is high-poly but fast
+	}
 
 	IEnumerator SlowUpdates () {
 		while (true) {
 			if (guardianCooldown > 1f)
 				guardianCooldown -= 0.02f;
-			if (churnCoreVisuals * 3f < guardianCooldown)
+			if (churnCoreVisuals * 2f < guardianCooldown)
 				locationTarget = ourhero.transform.position;
 			//alternate way to deal with hyper guardians?
 			yield return guardianWait;
@@ -175,7 +169,7 @@ public class GuardianMovement : MonoBehaviour {
 				targetVolume = 0.15f;
 			} else {
 				//since there's something in the way, let's tame the beast
-				guardianCooldown *= 0.93f;
+				guardianCooldown *= 0.98f;
 			}
 			if (setupbots.gameEnded == true)
 				targetVolume = 0f;

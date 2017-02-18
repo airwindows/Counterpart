@@ -129,10 +129,13 @@ public class BotMovement : MonoBehaviour
 				PlayerMovement.levelNumber += 1;
 				if (PlayerMovement.levelNumber < 1)
 					PlayerMovement.levelNumber = 1;
+				if (PlayerMovement.maxlevelNumber < PlayerMovement.levelNumber-1)
+					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber-1;
 
 				logo.GetComponent<Text> ().text = string.Format ("Success! Press e to go on to Level {0:0.}", PlayerMovement.levelNumber);
 
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
+				PlayerPrefs.SetInt ("maxLevelNumber", PlayerMovement.maxlevelNumber);
 				playermovement.locationOfCounterpart = Vector3.zero;
 				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
 				PlayerPrefs.Save ();
@@ -462,7 +465,7 @@ public class BotMovement : MonoBehaviour
 				//this is giving us 360 degree hue, and then saturation and luminance.
 				float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
 				if (botDistance > 400f) botDistance = 400f;
-				float adjustedHueAngle = color.h + playermovement.creepRotAngle;
+				float adjustedHueAngle = color.h;
 				Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 				//aim bot at target
 				if (Physics.Raycast (spawnLocation, Vector3.down, out hit, 99999f, onlyTerrains))

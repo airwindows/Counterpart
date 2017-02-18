@@ -78,7 +78,6 @@ public class PlayerMovement : MonoBehaviour
 	private float cameraZoom = 0f;
 	public float creepToRange;
 	public float startAtRange;
-	public float creepRotAngle = 1f;
 	public float guardianPissyFactor;
 	public int residueSequence = 1;
 	private float velCompensated = 0.00025f;
@@ -107,9 +106,9 @@ public class PlayerMovement : MonoBehaviour
 		setupbots = level.GetComponent<SetUpBots> ();
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
+		maxlevelNumber = PlayerPrefs.GetInt ("maxLevelNumber", 1);
 		residueSequence = (int)Mathf.Pow (levelNumber, 4) % 90125;
 		startAtRange = ((Mathf.Pow (residueSequence, 2) % Mathf.Pow (PlayerMovement.levelNumber, 2)) % 300) + 10;
-		creepRotAngle = (residueSequence % 359);
 		guardianPissyFactor = (((Mathf.Pow (residueSequence % 666, 4) / 1000f) / 1000f) / 1000f) / 1000f;
 		guardianPissyFactor *= guardianPissyFactor;
 		botNumber = (int)(Mathf.Pow (PlayerMovement.levelNumber, 2) % 900);
@@ -149,7 +148,7 @@ public class PlayerMovement : MonoBehaviour
 		endPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
-		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f * creepRotAngle) * 500f), 100f, 500f + (Mathf.Cos (Mathf.PI / 180f * creepRotAngle) * 500f));
+		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f) * 500f), 100f, 500f + (Mathf.Cos (Mathf.PI / 180f) * 500f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		StartCoroutine ("SlowUpdates");
@@ -166,7 +165,7 @@ public class PlayerMovement : MonoBehaviour
 		externalSource.Stop ();
 		externalSource.clip = backgroundMusic;
 		externalSource.pitch = 1f;
-		externalSource.volume = 1f;
+		externalSource.volume = 0.5f;
 		externalSource.reverbZoneMix = 0f;
 		externalSource.spatialBlend = 0f;
 		externalSource.loop = true;
@@ -381,10 +380,10 @@ public class PlayerMovement : MonoBehaviour
 			if (externalSource != null) {
 				if (yourMatchOccluded) {
 					externalSource.reverbZoneMix = 1f;
-					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 2500f);
+					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.5f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 3000f);
 				} else {
 					externalSource.reverbZoneMix = 0.5f;
-					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.4f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 5000f);
+					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.5f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 6000f);
 				}
 			}
 			

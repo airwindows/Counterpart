@@ -24,6 +24,8 @@ TagManager:
   - speed
   - fpsmeter
   - instructionScreen
+  - nameofgame
+  - highscore
   layers:
   - Default
   - TransparentFX
