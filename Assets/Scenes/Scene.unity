@@ -3404,8 +3404,9 @@ MonoBehaviour:
   activityRange: 10
   yourMatchDistance: 9999
   yourMatchOccluded: 0
+  backgroundMusic: {fileID: 0}
   botBeep: {fileID: 8300000, guid: 9b2db6bfa9dd34ac1b07f887f3d98dd1, type: 3}
-  backgroundMusic: {fileID: 8300000, guid: 55bd249d5e75745a5bb3d9d801fc7d93, type: 3}
+  counterpartMusic: {fileID: 8300000, guid: 55bd249d5e75745a5bb3d9d801fc7d93, type: 3}
   baseFOV: 69
   mouseSensitivity: 12
   mouseDrag: 0

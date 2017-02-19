@@ -46,9 +46,14 @@ public class PlayerMovement : MonoBehaviour
 	private int pingTimer = 2;
 	private bool pingGeiger = false;
 	private BackgroundSound backgroundSound;
-	private AudioSource externalSource;
+	public AudioSource backgroundMusic;
+	private float steps = 1536;
+	private float swing = 0.05f;
+	private float steplength;
+	private float quantized; //these four are the settings for the quantize effect
+	public float suppressChatter;
 	public AudioClip botBeep;
-	public AudioClip backgroundMusic;
+	public AudioClip counterpartMusic;
 	public float baseFOV = 68f;
 	public float mouseSensitivity;
 	public float mouseDrag = 0f;
@@ -91,10 +96,13 @@ public class PlayerMovement : MonoBehaviour
 	void Awake ()
 	{
 		backgroundSound = GetComponent<BackgroundSound> ();
+		backgroundMusic = GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ();
+		//backgroundMusic is also what we sync other sounds to
 		rigidBody = GetComponent<Rigidbody> ();
 		sphereCollider = GetComponent<SphereCollider> ();
 		audiosource = GetComponent<AudioSource> ();
 		audiosource.priority = 1;
+		suppressChatter = 20f;
 		//stuff bolted onto the player is always most important
 		allbots = GameObject.FindGameObjectWithTag ("AllBots").gameObject;
 		guardian = GameObject.FindGameObjectWithTag ("GuardianN").gameObject;
@@ -161,15 +169,14 @@ public class PlayerMovement : MonoBehaviour
 		audiosource.reverbZoneMix = 0f;
 		audiosource.Play ();
 		//this is our geiger counter for our bot
-		externalSource = GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ();
-		externalSource.Stop ();
-		externalSource.clip = backgroundMusic;
-		externalSource.pitch = 1f;
-		externalSource.volume = 0.5f;
-		externalSource.reverbZoneMix = 0f;
-		externalSource.spatialBlend = 0f;
-		externalSource.loop = true;
-		externalSource.Play ();
+		backgroundMusic.Stop ();
+		backgroundMusic.clip = counterpartMusic;
+		backgroundMusic.pitch = 1f;
+		backgroundMusic.volume = 0.5f;
+		backgroundMusic.reverbZoneMix = 0f;
+		backgroundMusic.spatialBlend = 0f;
+		backgroundMusic.loop = true;
+		backgroundMusic.Play ();
 	}
 
 	void OnApplicationQuit ()
@@ -359,6 +366,8 @@ public class PlayerMovement : MonoBehaviour
 				Cursor.visible = false;
 			}
 			//the notorious cursor code! Kills builds on Unity 5.2 and up
+			suppressChatter += 1f;
+
 
 			if (transform.position.y < -10f || transform.position.y > (terrainHeight + 1000f)) {
 				rigidBody.velocity = rigidBody.velocity * 0.5f;
@@ -377,22 +386,22 @@ public class PlayerMovement : MonoBehaviour
 			} //cheat to skip ahead with a level */
 
 
-			if (externalSource != null) {
+			if (backgroundMusic != null) {
 				if (yourMatchOccluded) {
-					externalSource.reverbZoneMix = 1f;
-					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.5f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 3000f);
+					backgroundMusic.reverbZoneMix = 1f;
+					backgroundMusic.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.7f), 1.1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 4000f);
 				} else {
-					externalSource.reverbZoneMix = 0.5f;
-					externalSource.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.5f), 1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 6000f);
+					backgroundMusic.reverbZoneMix = 0.5f;
+					backgroundMusic.volume = Mathf.Min (Mathf.Max (guardianmovement.guardianCooldown, 0.7f), 1.1f) - (Vector3.Distance (transform.position, guardianmovement.transform.position) / 5000f);
 				}
 			}
 			
 			if (setupbots.gameEnded) {
-				if (externalSource != null) {
-					externalSource.pitch *= 0.98f;
-					externalSource.reverbZoneMix = 1f;
-					if (externalSource.pitch < 0.4f)
-						externalSource.Stop ();
+				if (backgroundMusic != null) {
+					backgroundMusic.pitch *= 0.98f;
+					backgroundMusic.reverbZoneMix = 1f;
+					if (backgroundMusic.pitch < 0.4f)
+						backgroundMusic.Stop ();
 				}
 				if (Input.GetButton ("NextLevel")) {
 					//trigger new level load on completing of level
@@ -414,7 +423,9 @@ public class PlayerMovement : MonoBehaviour
 							audiosource.clip = botBeep;
 						audiosource.volume = 0.2f;
 						audiosource.reverbZoneMix = 0f;
-						audiosource.Play ();
+						steplength = backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+						quantized = (Mathf.Ceil (backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+						audiosource.PlayDelayed (quantized - backgroundMusic.time);
 					}
 				}
 				//this is our geiger counter for our bot

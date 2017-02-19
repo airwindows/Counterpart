@@ -4,7 +4,8 @@ using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))]
 
-public class GuardianMovement : MonoBehaviour {
+public class GuardianMovement : MonoBehaviour
+{
 
 	private AudioSource audiosource;
 	public AudioClip[] earthquakes;
@@ -15,6 +16,10 @@ public class GuardianMovement : MonoBehaviour {
 	private Material guardianSurface;
 	private Material guardianAura;
 	private Material guardianFarAura;
+	private float steps = 768;
+	private float swing = 0.01f;
+	private float steplength;
+	private float quantized; //these four are the settings for the quantize effect
 	private float churnCoreVisuals = 1f;
 	private float churnMiddleVisuals = 1f;
 	private float churnSurfaceVisuals = 1f;
@@ -30,14 +35,12 @@ public class GuardianMovement : MonoBehaviour {
 	private GameObject level;
 	private GameObject logo;
 	private GameObject devnotes;
-
-	WaitForSeconds guardianWait = new WaitForSeconds(0.01f);
-
+	WaitForSeconds guardianWait = new WaitForSeconds (0.01f);
 
 	void Awake ()
 	{
-		audiosource = GetComponent<AudioSource>();
-		myRigidbody = GetComponent<Rigidbody>();
+		audiosource = GetComponent<AudioSource> ();
+		myRigidbody = GetComponent<Rigidbody> ();
 		guardianMiddle = transform.Find ("Middle Layer").GetComponent<Renderer> ().material;
 		guardianSurface = transform.Find ("Surface Sphere").GetComponent<Renderer> ().material;
 		guardianAura = transform.Find ("Aura").GetComponent<Renderer> ().material;
@@ -47,21 +50,21 @@ public class GuardianMovement : MonoBehaviour {
 		//the guardian's one of the more important sounds
 		locationTarget = Vector3.zero;
 		ourhero = GameObject.FindGameObjectWithTag ("Player");
-		playermovement = ourhero.GetComponent<PlayerMovement>();
+		playermovement = ourhero.GetComponent<PlayerMovement> ();
 		level = GameObject.FindGameObjectWithTag ("Level");
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		devnotes = GameObject.FindGameObjectWithTag ("instructionScreen");
-		setupbots = level.GetComponent<SetUpBots>();
+		setupbots = level.GetComponent<SetUpBots> ();
 		StartCoroutine ("SlowUpdates");
-		guardianMiddle.SetColor("_TintColor",  new Color (1f, 1f, 1f, 1f));
-		guardianSurface.SetColor("_TintColor",  new Color (1f, 1f, 1f, 1f));
-		guardianAura.SetColor("_TintColor", new Color (1f, 1f, 1f, 1f));
+		guardianMiddle.SetColor ("_TintColor", new Color (1f, 1f, 1f, 1f));
+		guardianSurface.SetColor ("_TintColor", new Color (1f, 1f, 1f, 1f));
+		guardianAura.SetColor ("_TintColor", new Color (1f, 1f, 1f, 1f));
 		//note that it is NOT '_Color' that we are setting with the material dialog in Unity!
 		//since we have a glowing wireframe around a black hole, the tint is always brightest
-
 	}
 
-	void OnCollisionEnter(Collision col) {
+	void OnCollisionEnter (Collision col)
+	{
 		float crashScale = Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
 		if (setupbots.gameEnded == true) {
 			guardianCooldown = 0f;
@@ -80,15 +83,19 @@ public class GuardianMovement : MonoBehaviour {
 					externalSource.volume = 10f / crashScale;
 				}
 				externalSource.priority = 3;
-				externalSource.Play ();
+				steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+				quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+				externalSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
 			}
+
+
 			if (col.gameObject.tag == "Player") {
 				ourhero.GetComponent<SphereCollider> ().material.staticFriction = 0.2f;
 				ourhero.GetComponent<Rigidbody> ().freezeRotation = false;
 				ourhero.GetComponent<Rigidbody> ().angularDrag = 0.6f;
 				setupbots.gameEnded = true;
 				setupbots.killed = true;
-				GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop();
+				GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop ();
 
 				Destroy (playermovement);
 				externalSource.clip = BotCrashTinkle;
@@ -96,13 +103,13 @@ public class GuardianMovement : MonoBehaviour {
 				externalSource.pitch = 0.08f;
 				externalSource.priority = 3;
 				externalSource.volume = 1f;
-				externalSource.Play();
+				externalSource.Play ();
 				//
-				logo.GetComponent<Text>().text = "Game Over";
-				devnotes.GetComponent<Text>().text = " ";
+				logo.GetComponent<Text> ().text = "Game Over";
+				devnotes.GetComponent<Text> ().text = " ";
 				guardianCooldown = 0f;
 				PlayerPrefs.SetInt ("levelNumber", 1);
-				PlayerPrefs.Save();
+				PlayerPrefs.Save ();
 			}
 			//player is unkillable if they've already won
 		}
@@ -116,17 +123,21 @@ public class GuardianMovement : MonoBehaviour {
 			locationTarget = ourhero.transform.position;
 		}
 	}
-
 	
-	void FixedUpdate () {
+	void FixedUpdate ()
+	{
 		churnCoreVisuals -= (0.001f + (guardianCooldown * 0.001f));
-		if (churnCoreVisuals < 0f) churnCoreVisuals += 1f;
+		if (churnCoreVisuals < 0f)
+			churnCoreVisuals += 1f;
 		churnMiddleVisuals -= (0.0013f + (guardianCooldown * 0.0013f));
-		if (churnMiddleVisuals < 0f) churnMiddleVisuals += 1f;
+		if (churnMiddleVisuals < 0f)
+			churnMiddleVisuals += 1f;
 		churnSurfaceVisuals -= (0.0017f + (guardianCooldown * 0.0017f));
-		if (churnSurfaceVisuals < 0f) churnSurfaceVisuals += 1f;
+		if (churnSurfaceVisuals < 0f)
+			churnSurfaceVisuals += 1f;
 		churnFarVisuals -= (0.0021f + (guardianCooldown * 0.0021f));
-		if (churnFarVisuals < 0f) churnFarVisuals += 1f;
+		if (churnFarVisuals < 0f)
+			churnFarVisuals += 1f;
 		//the churning activity gets more intense as the thing animates
 
 		guardianMiddle.mainTextureOffset = new Vector2 (0, churnCoreVisuals); //middle is a coarser layer
@@ -135,7 +146,8 @@ public class GuardianMovement : MonoBehaviour {
 		guardianFarAura.mainTextureOffset = new Vector2 (0, churnFarVisuals); //aura is high-poly but fast
 	}
 
-	IEnumerator SlowUpdates () {
+	IEnumerator SlowUpdates ()
+	{
 		while (true) {
 			if (guardianCooldown > 1f)
 				guardianCooldown -= 0.02f;
@@ -147,8 +159,10 @@ public class GuardianMovement : MonoBehaviour {
 			Vector3 rawMove = locationTarget - transform.position;
 			rawMove = rawMove.normalized * 40f * guardianCooldown;
 			myRigidbody.AddForce (rawMove);
-			if (guardianCooldown > 7f) myRigidbody.velocity *= 0.86f;
-			if (guardianCooldown > 4f) guardianCooldown = 3f;
+			if (guardianCooldown > 7f)
+				myRigidbody.velocity *= 0.86f;
+			if (guardianCooldown > 4f)
+				guardianCooldown = 3f;
 			//safeguard against crazy psycho zapping around
 
 			if (guardianCooldown < 0f) {

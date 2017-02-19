@@ -25,6 +25,10 @@ public class BotMovement : MonoBehaviour
 	public AudioClip NewLevelAcquire;
 	private bool notEnded;
 	private AudioSource audioSource;
+	private int steps = 1536;
+	private float swing = 0.04f;
+	private float steplength;
+	private float quantized; //these four are the settings for the quantize effect
 	private float audioSourceVolume;
 	public Color32[] botBrain;
 	public int brainPointer = 0;
@@ -57,6 +61,7 @@ public class BotMovement : MonoBehaviour
 	private GameObject botZaps;
 	private ParticleSystem botZapsParticles;
 	private Vector3 overThere;
+	private Vector3 overWhere;
 	private float distance;
 	private float squish = 1f;
 	private float squishRecoil = 0f;
@@ -87,13 +92,11 @@ public class BotMovement : MonoBehaviour
 		onlyTerrains = 1 << LayerMask.NameToLayer ("Wireframe");
 		notEnded = true;
 		overThere = Vector3.zero;
+		overWhere = Vector3.zero;
 		logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
 		devnotes = GameObject.FindGameObjectWithTag ("instructionScreen");
 		if (yourMatch == playermovement.yourMatch) {
 			audioSource.priority = 2;
-		//	logo = GameObject.FindGameObjectWithTag ("counterpartlogo");
-		//	logo.GetComponent<Text> ().text = " ";
-			//use counterpart to blank the display
 		} else {
 			audioSource.priority = 100;
 		}
@@ -120,17 +123,17 @@ public class BotMovement : MonoBehaviour
 				externalSource.reverbZoneMix = 2f;
 				externalSource.spatialBlend = 0f;
 				externalSource.loop = false;
-				externalSource.PlayOneShot (NewLevelAcquire, 1f);
+				steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+				quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+				externalSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
 				notEnded = false;
 				//with that, we switch off the bot this is
-
-
 				setupbots.gameEnded = true;
 				PlayerMovement.levelNumber += 1;
 				if (PlayerMovement.levelNumber < 1)
 					PlayerMovement.levelNumber = 1;
-				if (PlayerMovement.maxlevelNumber < PlayerMovement.levelNumber-1)
-					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber-1;
+				if (PlayerMovement.maxlevelNumber < PlayerMovement.levelNumber - 1)
+					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber - 1;
 
 				logo.GetComponent<Text> ().text = string.Format ("Success! Press e to go on to Level {0:0.}", PlayerMovement.levelNumber);
 
@@ -143,7 +146,7 @@ public class BotMovement : MonoBehaviour
 			} else {
 				//it's not collision with the counterpart, so we do other collides
 				jumpCounter -= 1;
-				if (col.relativeVelocity.magnitude > 15f) {
+				if (col.relativeVelocity.magnitude > 10f) {
 					jumpCounter -= 1;
 					brainPointer += 1;
 					if (brainPointer >= botBrain.Length)
@@ -151,7 +154,7 @@ public class BotMovement : MonoBehaviour
 					//bots hit hard enough to crash get discombot-ulated
 					audioSource.clip = BotCrash;
 					audioSource.reverbZoneMix = 0f;
-					audioSource.pitch = 3f - ((col.relativeVelocity.magnitude - 25f) * 0.01f);
+					audioSource.pitch = (col.relativeVelocity.magnitude) * 0.15f;
 					audioSource.volume = 0.5f;
 					if (col.relativeVelocity.magnitude > 30f) {
 						//if you've run into a bot, that bot will be mean to you thereafter.
@@ -168,14 +171,14 @@ public class BotMovement : MonoBehaviour
 						Destroy (this);
 						//REKKT. Bot's brain is destroyed, after setting its color to dim.
 						playermovement.totalBotNumber = playermovement.totalBotNumber - 1;
-						if (playermovement.totalBotNumber < 1) {
+						if (playermovement.totalBotNumber < 2) {
 							setupbots.gameEnded = true;
 							setupbots.killed = true;
-							GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop();
-							logo.GetComponent<Text>().text = "Game Over";
-							devnotes.GetComponent<Text>().text = " ";
+							GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ().Stop ();
+							logo.GetComponent<Text> ().text = "Game Over";
+							devnotes.GetComponent<Text> ().text = " ";
 							PlayerPrefs.SetInt ("levelNumber", 1);
-							PlayerPrefs.Save();
+							PlayerPrefs.Save ();
 							//if you hunt and kill all the bots in the win screen, you lose the level you're at
 						}
 						guardianmovement.guardianCooldown += (col.relativeVelocity.magnitude / 10f);
@@ -183,8 +186,10 @@ public class BotMovement : MonoBehaviour
 						guardianmovement.locationTarget = transform.position;
 						//whether or not we killed the other bot, we are going to trigger the guardian
 					}
-					audioSource.Play ();
-					//play if over 15 or more
+					steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+					quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+					audioSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
+					//play if over 10 or more
 				}
 			} //decide if it's a hit or a kiss
 			//with the player
@@ -199,28 +204,15 @@ public class BotMovement : MonoBehaviour
 
 			BotMovement botmovement = col.gameObject.GetComponent<BotMovement> ();
 			if (botmovement != null) {
+				overWhere = botmovement.transform.position;
 				//bump a bot and it becomes the one you're lying about if you lie to the player
 				if (botmovement.yourMatch == yourMatch) {
 					botmovement.brainPointer = brainPointer;
 					botmovement.step = 9999;
 					//step is always set to what will engage the brain and do a new pointer
-					if (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains))
-					if (notEnded && withinRange) {
-						if (audioSource.clip != BotBeep)
-							audioSource.clip = BotBeep;
-						//audioSource.volume = 3f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));
-						//audioSource.reverbZoneMix = 0.01f;
-						brainR = botBrain [brainPointer].r;
-						brainG = botBrain [brainPointer].g;
-						brainB = botBrain [brainPointer].b;
-						//audioSource.reverbZoneMix = Vector3.Distance (transform.position, ourhero.transform.position) / 420f;
-						float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
-						if (voicePitch > 0.001f)
-							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying)
-							audioSource.Play ();
-						//bot makes a remark, unless it's too far to hear
-					}
+					brainR = botBrain [brainPointer].r;
+					brainG = botBrain [brainPointer].g;
+					brainB = botBrain [brainPointer].b;
 				}
 				//upon hitting another bot, if they're the same, they sync brainwaves. Or if they're different…
 				int left = Math.Abs (botmovement.botBrain [voicePointer].r - botBrain [voicePointer].r);
@@ -233,6 +225,30 @@ public class BotMovement : MonoBehaviour
 					guardianmovement.guardianCooldown += playermovement.guardianPissyFactor;
 					guardianmovement.locationTarget = transform.position;
 					//and when bots hit each other the Guardian goes to see.
+				}
+				if (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains))
+				if (notEnded && (distance < playermovement.suppressChatter)) {
+					playermovement.suppressChatter = distance;
+					if (audioSource.clip != BotBeep && !audioSource.isPlaying)
+						audioSource.clip = BotBeep;
+					audioSource.volume = 3f / Mathf.Sqrt (distance);
+					audioSource.reverbZoneMix = distance / 420f;
+					float voicePitch = 2.9f - ((brainR + brainG + brainB) * 0.006f);
+					if (voicePitch > 0.001f)
+						audioSource.pitch = voicePitch;
+				
+					if (col.relativeVelocity.magnitude > 10f && !audioSource.isPlaying && (setupbots.gameEnded == false)) {
+						audioSource.clip = BotCrash;
+						audioSource.volume = 0.5f;
+						audioSource.pitch = (col.relativeVelocity.magnitude) * 0.15f;
+					}
+				
+					if (!audioSource.isPlaying) {
+						steplength = playermovement.backgroundMusic.clip.length / 1152; //number of quantization steps in the entire loop's length
+						quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (0.1f * steplength);
+						audioSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
+						//bot makes a remark, unless it's too far to hear
+					}
 				}
 			}
 			//collision with another bot
@@ -257,9 +273,11 @@ public class BotMovement : MonoBehaviour
 				if (playermovement.yourMatch == yourMatch) {
 					audioSource.pitch = 3f;
 				}
-				if (!audioSource.isPlaying && audioSource.priority < 255)
-					audioSource.Play ();
-
+				if (!audioSource.isPlaying && audioSource.priority < 255) {
+					steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+					quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+					audioSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
+				}
 				myColor.material.color = litColor;
 				botZapsParticles.startSize = 4f;
 
@@ -267,13 +285,19 @@ public class BotMovement : MonoBehaviour
 					botTarget = ourhero.transform.position;
 				//zap your counterpart and it rushes to meet you
 
-				if (overThere != Vector3.zero && voicePitch > 1f) {
+				if (overThere != Vector3.zero && voicePitch > 1.2f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.Emit (1);
 				}
 				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 				//and if it is sufficiently friendly
+				if (overWhere != Vector3.zero && voicePitch < 0.7f) {
+					botZaps.transform.position = Vector3.MoveTowards (transform.position, overWhere, 1f);
+					botZaps.transform.LookAt (overWhere);
+					botZapsParticles.Emit (1);
+				}
+				//will fire a particle towards its last bump if it is sufficiently cranky and dissimilar to you
 			}
 			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.zero, 0.5f);
 		}
@@ -376,8 +400,8 @@ public class BotMovement : MonoBehaviour
 			}
 
 			if (playermovement != null) {
-			if ((Physics.Linecast (transform.position, (playermovement.locationOfCounterpart + (transform.position - playermovement.locationOfCounterpart).normalized)) == false) && (playermovement.locationOfCounterpart.y < playermovement.terrainHeight)) {
-				//returns true if there's anything in the way. false means we can see counterpart, if it's not higher than the terrain it counts
+				if ((Physics.Linecast (transform.position, (playermovement.locationOfCounterpart + (transform.position - playermovement.locationOfCounterpart).normalized)) == false) && (playermovement.locationOfCounterpart.y < playermovement.terrainHeight)) {
+					//returns true if there's anything in the way. false means we can see counterpart, if it's not higher than the terrain it counts
 					if (playermovement.yourMatch == yourMatch)
 						overThere = playermovement.transform.position + (UnityEngine.Random.insideUnitSphere * 0.5f);
 					else
@@ -405,7 +429,7 @@ public class BotMovement : MonoBehaviour
 			brainB = botBrain [brainPointer].b;
 			brainBright = brainR + brainG + brainB;
 
-			if (step >= (64-(int)(Math.Sqrt(brainBright)*2f))) {
+			if (step >= (64 - (int)(Math.Sqrt (brainBright) * 2f))) {
 				step = 0;
 				//here's where we do the bot manevuerings
 				//note that step will always start at zero, so we can go above to where it's updated
@@ -432,8 +456,11 @@ public class BotMovement : MonoBehaviour
 						float voicePitch = 2.9f - (brainBright * 0.006f);
 						if (voicePitch > 0f)
 							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying)
-							audioSource.Play ();
+						if (!audioSource.isPlaying) {
+							steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+							quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+							audioSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
+						}
 						//bot makes a remark
 					} else
 						audioSource.Stop ();
@@ -451,12 +478,16 @@ public class BotMovement : MonoBehaviour
 						float voicePitch = 2.9f - (brainBright * 0.006f);
 						if (voicePitch > 0f)
 							audioSource.pitch = voicePitch;
-						if (!audioSource.isPlaying)
-							audioSource.Play ();
+						if (!audioSource.isPlaying) {
+							steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+							quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
+							audioSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
+						}
 						//bot makes a remark
 					} else
 						audioSource.Stop ();
 				}
+				yield return shortWait;
 
 				rigidBody.angularVelocity = Vector3.zero;
 				transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, brainG - 127f, brainB - 127f));
@@ -464,7 +495,8 @@ public class BotMovement : MonoBehaviour
 				SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 				//this is giving us 360 degree hue, and then saturation and luminance.
 				float botDistance = Mathf.Abs (1f - color.s) * playermovement.creepToRange;
-				if (botDistance > 400f) botDistance = 400f;
+				if (botDistance > 400f)
+					botDistance = 400f;
 				float adjustedHueAngle = color.h;
 				Vector3 spawnLocation = new Vector3 (403f + (Mathf.Sin (Mathf.PI / 180f * adjustedHueAngle) * botDistance), 9999f, 521f + (Mathf.Cos (Mathf.PI / 180f * adjustedHueAngle) * botDistance));
 				//aim bot at target
@@ -514,7 +546,7 @@ public class BotMovement : MonoBehaviour
 			//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 			if (playermovement.yourMatch == yourMatch) {
-				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position)*4f; //Mathf.Sqrt()
+				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position) * 4f; //Mathf.Sqrt()
 				playermovement.yourMatchOccluded = false;
 				playermovement.locationOfCounterpart = transform.position;
 				//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.

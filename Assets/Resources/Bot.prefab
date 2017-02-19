@@ -361,6 +361,10 @@ Prefab:
       propertyPath: reverbZoneMixCustomCurve.m_Curve.Array.data[0].outSlope
       value: -.0601790212
       objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: steps
+      value: 512
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 0}
   m_RootGameObject: {fileID: 151622}
