@@ -136,9 +136,15 @@ public class BotMovement : MonoBehaviour
 					PlayerMovement.maxlevelNumber = PlayerMovement.levelNumber - 1;
 
 				logo.GetComponent<Text> ().text = string.Format ("Success! Press e to go on to Level {0:0.}", PlayerMovement.levelNumber);
+				PlayerMovement.shots += 501;
+				PlayerMovement.shots -= PlayerMovement.levelNumber;
+				//seems like we are given lots of shots, but it starts getting less and less as we go, so be careful
+				if (QualitySettings.maximumLODLevel == 1) PlayerMovement.shots = 1;
+				//easy mode means we are always at near-zero ammo if we try to go to hardcore
 
 				PlayerPrefs.SetInt ("levelNumber", PlayerMovement.levelNumber);
 				PlayerPrefs.SetInt ("maxLevelNumber", PlayerMovement.maxlevelNumber);
+				PlayerPrefs.SetInt ("shots", PlayerMovement.shots);
 				playermovement.locationOfCounterpart = Vector3.zero;
 				//new level, so we are zeroing the locationOfCounterpart so it'll assign a new random one
 				PlayerPrefs.Save ();
@@ -285,19 +291,19 @@ public class BotMovement : MonoBehaviour
 					botTarget = ourhero.transform.position;
 				//zap your counterpart and it rushes to meet you
 
-				if (overThere != Vector3.zero && voicePitch > 1.2f) {
+				if (overThere != Vector3.zero && voicePitch > 0.5f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.Emit (1);
 				}
 				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
-				//and if it is sufficiently friendly
-				if (overWhere != Vector3.zero && voicePitch < 0.7f) {
+
+				if (overWhere != Vector3.zero && voicePitch < 0.5f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overWhere, 1f);
 					botZaps.transform.LookAt (overWhere);
 					botZapsParticles.Emit (1);
 				}
-				//will fire a particle towards its last bump if it is sufficiently cranky and dissimilar to you
+				//will fire a particle towards its last bump if it is sufficiently cranky and dissimilar to you. Lying bot!
 			}
 			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.zero, 0.5f);
 		}

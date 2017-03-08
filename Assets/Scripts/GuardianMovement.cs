@@ -109,6 +109,7 @@ public class GuardianMovement : MonoBehaviour
 				devnotes.GetComponent<Text> ().text = " ";
 				guardianCooldown = 0f;
 				PlayerPrefs.SetInt ("levelNumber", 1);
+				PlayerPrefs.SetInt ("shots", 1000);
 				PlayerPrefs.Save ();
 			}
 			//player is unkillable if they've already won

@@ -10,9 +10,12 @@ using UnityEngine.UI;
 public class PlayerMovement : MonoBehaviour
 {
 	public GameObject ourlevel;
+	private GameObject nameofgame;
 	public static int levelNumber;
 	public static int maxlevelNumber;
 	public static int playerScore;
+	public static int shots;
+	private int lastShots;
 	public static Vector3 playerPosition = new Vector3 (403f, 2000f, 521f);
 	public static Quaternion playerRotation = new Quaternion (0f, 0f, 0f, 0f);
 	public static float initialTurn = 0f;
@@ -97,6 +100,9 @@ public class PlayerMovement : MonoBehaviour
 	{
 		backgroundSound = GetComponent<BackgroundSound> ();
 		backgroundMusic = GameObject.FindGameObjectWithTag ("Level").GetComponent<AudioSource> ();
+		level = GameObject.FindGameObjectWithTag ("Level");
+		nameofgame = GameObject.FindGameObjectWithTag ("nameofgame");
+
 		//backgroundMusic is also what we sync other sounds to
 		rigidBody = GetComponent<Rigidbody> ();
 		sphereCollider = GetComponent<SphereCollider> ();
@@ -115,6 +121,10 @@ public class PlayerMovement : MonoBehaviour
 		locationOfCounterpart = Vector3.zero;
 		levelNumber = PlayerPrefs.GetInt ("levelNumber", 1);
 		maxlevelNumber = PlayerPrefs.GetInt ("maxLevelNumber", 1);
+		shots = PlayerPrefs.GetInt ("shots", 1000);
+		lastShots = shots;
+		if (QualitySettings.maximumLODLevel == 2) nameofgame.GetComponent<Text> ().text = string.Format ("Shots: {0:0.}", shots);
+		//set up the shots mode if we are in hardcore
 		residueSequence = (int)Mathf.Pow (levelNumber, 4) % 90125;
 		startAtRange = ((Mathf.Pow (residueSequence, 2) % Mathf.Pow (PlayerMovement.levelNumber, 2)) % 300) + 10;
 		guardianPissyFactor = (((Mathf.Pow (residueSequence % 666, 4) / 1000f) / 1000f) / 1000f) / 1000f;
@@ -126,7 +136,7 @@ public class PlayerMovement : MonoBehaviour
 		if (botNumber < 1)
 			botNumber = 1;
 		totalBotNumber = botNumber;
-		creepToRange = ((residueSequence % botNumber) % 468) + (Mathf.Sqrt (botNumber)*4f);
+		creepToRange = ((residueSequence % botNumber) % 468) + (Mathf.Sqrt (botNumber) * 4f);
 		terrainHeight = ((Mathf.Pow (residueSequence, 2) % 20) + Mathf.Pow (Mathf.Pow (residueSequence, 5) % levelNumber, 2)) % 999;
 		if (terrainHeight < 900f)
 			terrainHeight = terrainHeight % 300;
@@ -183,6 +193,7 @@ public class PlayerMovement : MonoBehaviour
 	{
 		if (setupbots.gameEnded != true) {
 			PlayerPrefs.SetInt ("levelNumber", 1);
+			PlayerPrefs.SetInt ("shots", 1000);
 			PlayerPrefs.Save ();
 			//if we are quitting, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
@@ -285,8 +296,15 @@ public class PlayerMovement : MonoBehaviour
 		if (Input.GetButton ("KeyboardTalk") || Input.GetButton ("MouseTalk")) {
 			if (!particlesystem.isPlaying)
 				particlesystem.Play ();
-			particlesystem.Emit (1);
+			if (shots > 0 || QualitySettings.maximumLODLevel == 1)
+				particlesystem.Emit (1);
+			//On HARDCORE you can only fire one zap per click, but you would only want to
+			shots -= 1;
+			if (shots < 0) shots = 0;
+			//because HARDCORE limits your total shots.
+			//However, if you can still touch your counterpart, you get another level and a shots refresh.
 		}
+
 		if (Physics.SphereCast (transform.position, sphereCollider.radius, Vector3.down, out hit, 99999f, onlyTerrains)) {
 			groundContactNormal = hit.normal;
 			desiredMove = Vector3.ProjectOnPlane (rawMove, groundContactNormal).normalized;
@@ -372,6 +390,14 @@ public class PlayerMovement : MonoBehaviour
 			if (transform.position.y < -10f || transform.position.y > (terrainHeight + 1000f)) {
 				rigidBody.velocity = rigidBody.velocity * 0.5f;
 				guardianmovement.guardianCooldown = 8f;
+			}
+			//crash to death off the side of the map
+
+
+			if (shots != lastShots && QualitySettings.maximumLODLevel == 2) {
+				nameofgame.GetComponent<Text> ().text = string.Format ("Shots: {0:0.}", shots);
+				lastShots = shots;
+				//update the visuals if we are in hardcore mode
 			}
 
 			/* if (!setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {

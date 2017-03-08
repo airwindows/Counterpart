@@ -3405,6 +3405,7 @@ MonoBehaviour:
   yourMatchDistance: 9999
   yourMatchOccluded: 0
   backgroundMusic: {fileID: 0}
+  suppressChatter: 0
   botBeep: {fileID: 8300000, guid: 9b2db6bfa9dd34ac1b07f887f3d98dd1, type: 3}
   counterpartMusic: {fileID: 8300000, guid: 55bd249d5e75745a5bb3d9d801fc7d93, type: 3}
   baseFOV: 69
@@ -3827,6 +3828,67 @@ Transform:
 GameObject:
   m_PrefabParentObject: {fileID: 181790, guid: 127f533fd38874ac89e7ce83b905cb5e, type: 2}
   m_PrefabInternal: {fileID: 1144589466}
+--- !u!1 &1584755952
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 4
+  m_Component:
+  - 224: {fileID: 1584755955}
+  - 222: {fileID: 1584755954}
+  - 114: {fileID: 1584755953}
+  m_Layer: 0
+  m_Name: Sights
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1584755953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1584755952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -765806418, guid: f5f67c52d1564df4a8936ccd202a3bd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+--- !u!222 &1584755954
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1584755952}
+--- !u!224 &1584755955
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1584755952}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: .25, y: .25, z: .25}
+  m_Children: []
+  m_Father: {fileID: 1654945349}
+  m_RootOrder: 4
+  m_AnchorMin: {x: .5, y: .5}
+  m_AnchorMax: {x: .5, y: .5}
+  m_AnchoredPosition: {x: 1, y: 0}
+  m_SizeDelta: {x: 20, y: 20}
+  m_Pivot: {x: .5, y: .5}
 --- !u!1 &1654945348
 GameObject:
   m_ObjectHideFlags: 0
@@ -3859,6 +3921,7 @@ RectTransform:
   - {fileID: 1775862330}
   - {fileID: 407607095}
   - {fileID: 1321234755}
+  - {fileID: 1584755955}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_AnchorMin: {x: 0, y: 0}
