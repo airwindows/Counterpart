@@ -335,7 +335,7 @@ GameObject:
   - 167: {fileID: 242970430}
   m_Layer: 0
   m_Name: Reverb Zone
-  m_TagString: Untagged
+  m_TagString: reverb
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 4294967295
@@ -364,12 +364,12 @@ AudioReverbZone:
   m_ReverbPreset: 27
   m_Room: -3000
   m_RoomHF: 0
-  m_DecayTime: 20
-  m_DecayHFRatio: 1.61800003
+  m_DecayTime: 8
+  m_DecayHFRatio: .617999971
   m_Reflections: -10000
   m_ReflectionsDelay: 0
   m_Reverb: 2000
-  m_ReverbDelay: .0957000032
+  m_ReverbDelay: .100000001
   m_HFReference: 20000
   m_RoomRolloffFactor: 0
   m_Diffusion: 61.7999992
@@ -3368,6 +3368,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ourlevel: {fileID: 631677883}
+  audioReverbZone: {fileID: 0}
   mainCamera: {fileID: 224352051}
   wireframeCamera: {fileID: 1936523729}
   skyboxCamera: {fileID: 716947624}

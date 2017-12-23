@@ -83,7 +83,7 @@ public class GuardianMovement : MonoBehaviour
 					externalSource.volume = 10f / crashScale;
 				}
 				externalSource.priority = 3;
-				steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+				steplength = playermovement.backgroundMusic.clip.length / steps / 32f; //number of quantization steps in the entire loop's length
 				quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
 				externalSource.PlayDelayed (quantized - playermovement.backgroundMusic.time);
 			}

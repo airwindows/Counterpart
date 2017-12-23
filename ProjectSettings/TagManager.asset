@@ -26,6 +26,7 @@ TagManager:
   - instructionScreen
   - nameofgame
   - highscore
+  - reverb
   layers:
   - Default
   - TransparentFX
