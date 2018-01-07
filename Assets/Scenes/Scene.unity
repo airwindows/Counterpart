@@ -609,7 +609,9 @@ MonoBehaviour:
   - {fileID: 8300000, guid: d0ed33dd7c9334c8da4eb7c4d72c2035, type: 3}
   - {fileID: 8300000, guid: 9b02e2c6569a24c34ad720308bb6340c, type: 3}
   BotCrashTinkle: {fileID: 8300000, guid: a51262161a3d348459f460b649e86633, type: 3}
+  auraSize: 0
   locationTarget: {x: 0, y: 0, z: 0}
+  afterPlayer: 0
   guardianCooldown: 0
 --- !u!135 &487292346
 SphereCollider:
@@ -633,7 +635,7 @@ Rigidbody:
   m_Mass: 4
   m_Drag: .100000001
   m_AngularDrag: 0
-  m_UseGravity: 0
+  m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 112
@@ -645,7 +647,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 487292344}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 467, y: 315, z: 440}
+  m_LocalPosition: {x: 467, y: 339.730011, z: 440}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children:
   - {fileID: 1344600346}
@@ -3403,6 +3405,7 @@ MonoBehaviour:
   yourMatch: 0
   yourBrain: []
   activityRange: 10
+  attractAttention: 0
   yourMatchDistance: 9999
   yourMatchOccluded: 0
   backgroundMusic: {fileID: 0}

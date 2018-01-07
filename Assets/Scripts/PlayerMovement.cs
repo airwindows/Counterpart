@@ -35,6 +35,7 @@ public class PlayerMovement : MonoBehaviour
 	public float activityRange = 30f;
 	private int brainPointer;
 	private float altitude = 1f;
+	public float attractAttention = 0f;
 	private Rigidbody rigidBody;
 	private Vector3 startPosition;
 	private Vector3 endPosition;
@@ -160,7 +161,7 @@ public class PlayerMovement : MonoBehaviour
 		endPosition = transform.position;
 		stepsBetween = 0f;
 		blurHack = 0;
-		guardianmovement.locationTarget = new Vector3 (500f + (Mathf.Sin (Mathf.PI / 180f) * 500f), 100f, 500f + (Mathf.Cos (Mathf.PI / 180f) * 500f));
+		guardianmovement.locationTarget = new Vector3 (400f + (Mathf.Sin (Mathf.PI / 180f) * 400f), 100f, 400f + (Mathf.Cos (Mathf.PI / 180f) * 400f));
 		guardian.transform.position = guardianmovement.locationTarget;
 		//set up the scary monster to be faaaar away to start. It will circle.
 		StartCoroutine ("SlowUpdates");
@@ -187,7 +188,6 @@ public class PlayerMovement : MonoBehaviour
 	{
 		if (setupbots.gameEnded != true) {
 			PlayerPrefs.SetInt ("levelNumber", 1);
-			PlayerPrefs.SetInt ("shots", 1000);
 			PlayerPrefs.Save ();
 			//if we are quitting, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
@@ -451,7 +451,6 @@ public class PlayerMovement : MonoBehaviour
 			//elaborate zoom goes wide angle for looking up, and for high ground
 
 			if (transform.position.y < -1) {
-				//rigidBody.velocity *= 0.99f;
 				guardianmovement.guardianCooldown = 4f;
 				guardianmovement.locationTarget = transform.position;
 				//call the guardian!
@@ -462,9 +461,12 @@ public class PlayerMovement : MonoBehaviour
 				if (altitude < 1f) {
 					backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.001f, 0.5f);
 					backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.00005f);
+					attractAttention = backgroundSound.whoosh;
+
 				} else {
 					backgroundSound.whooshLowCut = Mathf.Lerp (backgroundSound.whooshLowCut, 0.2f, 0.5f);
 					backgroundSound.whoosh = (rigidBody.velocity.magnitude * Mathf.Sqrt (rigidBody.velocity.magnitude) * 0.00003f);
+					attractAttention = backgroundSound.whoosh * 2f;
 				}
 			}
 			backgroundSound.brightness = (transform.position.y / 900.0f) + 0.1f;
@@ -473,9 +475,6 @@ public class PlayerMovement : MonoBehaviour
 			yield return playerWait;
 
 			wireframeCamera.fieldOfView = baseFOV + (cameraZoom * 0.5f);
-			//float recip = 1.0f / backgroundSound.gain;
-			//recip = Mathf.Lerp ((float)recip, altitude, 0.5f);
-			//recip = Mathf.Min (10.0f, Mathf.Sqrt (recip + 10.0f));
 
 			if (botNumber < totalBotNumber) {
 				ourlevel.GetComponent<SetUpBots> ().SpawnBot (-1);

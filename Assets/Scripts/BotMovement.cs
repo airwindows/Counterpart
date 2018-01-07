@@ -162,7 +162,7 @@ public class BotMovement : MonoBehaviour
 						if (audioSource.pitch < 0.2f)
 							audioSource.pitch = 0.2f;
 						audioSource.volume = 0.8f;
-						myColor.material.color = new Color (0.3f, 0.3f, 0.3f);
+						myColor.material.color = new Color (0.1f, 0.1f, 0.1f);
 						sphereCollider.material.staticFriction = 0.2f;
 						rigidBody.freezeRotation = false;
 						rigidBody.angularDrag = 0.5f;
@@ -183,6 +183,8 @@ public class BotMovement : MonoBehaviour
 						//lerp value, slowly diminishes.
 						guardianmovement.locationTarget = transform.position;
 						//whether or not we killed the other bot, we are going to trigger the guardian
+						guardianmovement.afterPlayer = true;
+						//will only reset when guardiancooldown is 0.
 					}
 					steplength = playermovement.backgroundMusic.clip.length / steps / 16f; //number of quantization steps in the entire loop's length
 					quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
@@ -209,16 +211,12 @@ public class BotMovement : MonoBehaviour
 					brainR = botBrain [brainPointer].r;
 					brainG = botBrain [brainPointer].g;
 					brainB = botBrain [brainPointer].b;
-				}
-				//upon hitting another bot, if they're the same, they sync brainwaves. Or if they're different…
-				int left = Math.Abs (botmovement.botBrain [voicePointer].r - botBrain [voicePointer].r);
-				int right = Math.Abs (botmovement.botBrain [voicePointer].g - botBrain [voicePointer].g);
-				int center = Math.Abs (botmovement.botBrain [voicePointer].b - botBrain [voicePointer].b);
-				int combined = (left * right * center) / 10000;
-				if (combined > (200 - Math.Sqrt (PlayerMovement.levelNumber))) {
-					guardianmovement.guardianCooldown += playermovement.guardianPissyFactor;
-					guardianmovement.locationTarget = transform.position;
-					//and when bots hit each other the Guardian goes to see.
+				} else {
+					//upon hitting another bot, if they're the same, they sync brainwaves. Or if they're different…
+					if (guardianmovement.afterPlayer == false) {
+						guardianmovement.guardianCooldown += playermovement.guardianPissyFactor;
+						guardianmovement.locationTarget = transform.position;
+					}
 				}
 			}
 			//collision with another bot
@@ -250,14 +248,14 @@ public class BotMovement : MonoBehaviour
 					steplength = playermovement.backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
 					quantized = (Mathf.Ceil (playermovement.backgroundMusic.time / steplength) * steplength) + (swing * steplength);
 					audioSource.volume = 1f;
-					audioSource.Play(); //Delayed (quantized - playermovement.backgroundMusic.time);
+					audioSource.Play (); //Delayed (quantized - playermovement.backgroundMusic.time);
 				}
 				myColor.material.color = litColor;
 				botZapsParticles.startSize = 4f;
 
-				if (playermovement.yourMatch == yourMatch)
+				if (playermovement.yourMatch == yourMatch && guardianmovement.afterPlayer == true)
 					botTarget = ourhero.transform.position;
-				//zap your counterpart and it rushes to meet you
+				//be in danger and your counterpart rushes to meet you
 
 				if (overThere != Vector3.zero && voicePitch > 0.5f) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
