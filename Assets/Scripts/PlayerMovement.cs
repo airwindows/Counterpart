@@ -171,6 +171,7 @@ public class PlayerMovement : MonoBehaviour
 		if (audiosource.clip != botBeep)
 			audiosource.clip = botBeep;
 		audiosource.volume = 0.2f;
+		audiosource.priority = 2;
 		audiosource.reverbZoneMix = 0f;
 		audiosource.Play ();
 		//this is our geiger counter for our bot
@@ -178,6 +179,7 @@ public class PlayerMovement : MonoBehaviour
 		backgroundMusic.clip = counterpartMusic;
 		backgroundMusic.pitch = 1f;
 		backgroundMusic.volume = 0.5f;
+		backgroundMusic.priority = 1;
 		backgroundMusic.reverbZoneMix = 0f;
 		backgroundMusic.spatialBlend = 0f;
 		backgroundMusic.loop = true;
@@ -186,12 +188,12 @@ public class PlayerMovement : MonoBehaviour
 
 	void OnApplicationQuit ()
 	{
-		if (setupbots.gameEnded != true) {
+		if (setupbots.gameEnded != true && QualitySettings.maximumLODLevel == 2) {
 			PlayerPrefs.SetInt ("levelNumber", 1);
 			PlayerPrefs.Save ();
-			//if we are quitting, it's like a total reset. Arcade mode.
+			//if we are quitting, AND on hardcore mode, it's like a total reset. Arcade mode.
 			//BUT, if we're quitting out of the win screen we can resume.
-		}
+		}				
 	}
 
 	void Update ()
@@ -383,6 +385,27 @@ public class PlayerMovement : MonoBehaviour
 			}
 			//crash to death off the side of the map
 
+			if (QualitySettings.maximumLODLevel == 1) {
+				//easy mode: hardcore is 2
+				if (transform.position.x < 0f) {
+					transform.position = new Vector3 (0.001f, transform.position.y, transform.position.z);
+					rigidBody.velocity = new Vector3 (Math.Abs(rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+				}
+				if (transform.position.z < 0f) {
+					transform.position = new Vector3 (transform.position.x, transform.position.y, 0.001f);
+					rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, Math.Abs(rigidBody.velocity.z));
+				}
+				if (transform.position.x > 1000f) {
+					transform.position = new Vector3 (999.999f, transform.position.y, transform.position.z);
+					rigidBody.velocity = new Vector3 (-Math.Abs(rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+				}
+				if (transform.position.z > 1000f) {
+					transform.position = new Vector3 (transform.position.x, transform.position.y, 999.999f);
+					rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, -Math.Abs(rigidBody.velocity.z));
+				}
+				//can't fall off map in easy mode, or at least you'd have to work at it. You bounce.
+			}
+
 			/* if (!setupbots.gameEnded && (Input.GetButton ("NextLevel"))) {
 				//with that, we switch off the bot this is
 				setupbots.gameEnded = true;
@@ -432,7 +455,16 @@ public class PlayerMovement : MonoBehaviour
 							audiosource.clip = botBeep;
 						audiosource.volume = 0.2f;
 						audiosource.reverbZoneMix = 0f;
-						steplength = backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+						audiosource.priority = 1;
+
+						if (QualitySettings.maximumLODLevel == 1) {
+							steplength = backgroundMusic.clip.length / steps; //number of quantization steps in the entire loop's length
+							//easy mode: more async from beat
+						} else {
+							steplength = backgroundMusic.clip.length / steps / 16f; //number of quantization steps in the entire loop's length
+							//hardcore: more heavily quantized and lots slower
+						}
+
 						quantized = (Mathf.Ceil (backgroundMusic.time / steplength) * steplength) + (swing * steplength);
 						audiosource.PlayDelayed (quantized - backgroundMusic.time);
 					}

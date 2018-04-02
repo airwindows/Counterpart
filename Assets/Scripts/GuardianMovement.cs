@@ -107,7 +107,14 @@ public class GuardianMovement : MonoBehaviour
 				logo.GetComponent<Text> ().text = "Game Over";
 				devnotes.GetComponent<Text> ().text = " ";
 				guardianCooldown = 0f;
-				PlayerPrefs.SetInt ("levelNumber", 1);
+				if (QualitySettings.maximumLODLevel == 2) {
+					PlayerPrefs.SetInt ("levelNumber", 1);
+					//if we're on hardcore mode, we reset the level.
+					//Failing to do this means we'll just be retrying the level again next game.
+				} else {
+					devnotes.GetComponent<Text> ().text = "Press e to retry!";
+					//telegraph that we're still in easy mode and you can try again
+				}
 				PlayerPrefs.Save ();
 			}
 
@@ -169,7 +176,11 @@ public class GuardianMovement : MonoBehaviour
 					myRigidbody.AddForce (rawMove);
 				}
 			}
-			
+
+			if (setupbots.gameEnded == true && setupbots.killed == true && QualitySettings.maximumLODLevel == 1 && Input.GetButton ("NextLevel")) {
+				//trigger new level load if player's dead and we're in easy mode and you go for next (same) level
+				Application.LoadLevel ("Scene");
+			}
 			yield return guardianWait;
 
 			float pitch = 0.5f / Mathf.Sqrt (Vector3.Distance (transform.position, ourhero.transform.position));

@@ -225,7 +225,8 @@ public class BotMovement : MonoBehaviour
 
 	void OnParticleCollision (GameObject shotBy)
 	{
-		if (shotBy.CompareTag ("playerPackets")) {
+		if (shotBy.CompareTag ("playerPackets") || botZapsParticles.particleCount < 200) {
+			//respond to player zaps, or any zap if total count is low enough to justify
 			voicePointer += 1;
 			if (voicePointer >= botBrain.Length)
 				voicePointer = 0;
@@ -252,12 +253,7 @@ public class BotMovement : MonoBehaviour
 				}
 				myColor.material.color = litColor;
 				botZapsParticles.startSize = 4f;
-
-				if (playermovement.yourMatch == yourMatch && guardianmovement.afterPlayer == true)
-					botTarget = ourhero.transform.position;
-				//be in danger and your counterpart rushes to meet you
-
-				if (overThere != Vector3.zero && voicePitch > 0.5f) {
+				if (overThere != Vector3.zero && playermovement.yourMatch != yourMatch) {
 					botZaps.transform.position = Vector3.MoveTowards (transform.position, overThere, 1f);
 					botZaps.transform.LookAt (overThere);
 					botZapsParticles.Emit (1);
@@ -265,6 +261,10 @@ public class BotMovement : MonoBehaviour
 				//will fire a particle in the direction of where it last saw the one we want, if it's seen the bot in question, and if it is not that bot
 			}
 			rigidBody.velocity = Vector3.Lerp (rigidBody.velocity, Vector3.zero, 0.5f);
+		}
+		if (playermovement.yourMatch == yourMatch) {
+			myColor.material.color = litColor;
+			if (jumpCounter > 3) jumpCounter = -1;
 		}
 	}
 
@@ -361,7 +361,20 @@ public class BotMovement : MonoBehaviour
 				audioSource.Stop ();
 
 			if (transform.position.x < 0f) {
-				transform.position = new Vector3 (transform.position.x + 1000f, transform.position.y, transform.position.z);
+				transform.position = new Vector3 (0.001f, transform.position.y, transform.position.z);
+				rigidBody.velocity = new Vector3 (Math.Abs(rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+			}
+			if (transform.position.z < 0f) {
+				transform.position = new Vector3 (transform.position.x, transform.position.y, 0.001f);
+				rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, Math.Abs(rigidBody.velocity.z));
+			}
+			if (transform.position.x > 1000f) {
+				transform.position = new Vector3 (999.999f, transform.position.y, transform.position.z);
+				rigidBody.velocity = new Vector3 (-Math.Abs(rigidBody.velocity.x), rigidBody.velocity.y, rigidBody.velocity.z);
+			}
+			if (transform.position.z > 1000f) {
+				transform.position = new Vector3 (transform.position.x, transform.position.y, 999.999f);
+				rigidBody.velocity = new Vector3 (rigidBody.velocity.x, rigidBody.velocity.y, -Math.Abs(rigidBody.velocity.z));
 			}
 
 			if (playermovement != null) {
@@ -375,9 +388,6 @@ public class BotMovement : MonoBehaviour
 				}
 			}
 
-			if (transform.position.z < 0f) {
-				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z + 1000f);
-			}
 
 			if (transform.position.y > 4999f) {
 				if (Physics.Raycast (transform.position, Vector3.down, out hit, 9999f))
@@ -452,10 +462,9 @@ public class BotMovement : MonoBehaviour
 					} else
 						audioSource.Stop ();
 				}
-				yield return shortWait;
 
 				rigidBody.angularVelocity = Vector3.zero;
-				transform.LookAt (transform.localPosition + new Vector3 (brainR - 127f, brainG - 127f, brainB - 127f));
+				transform.LookAt (transform.localPosition + new Vector3 ((brainR - 127f)*9f, (brainG - 127f)*9f, (brainB - 127f)*9f));
 				Color c = new Color (brainR, brainG, brainB);
 				SetUpBots.HSLColor color = SetUpBots.HSLColor.FromRGBA (c);
 				//this is giving us 360 degree hue, and then saturation and luminance.
@@ -470,27 +479,16 @@ public class BotMovement : MonoBehaviour
 				else
 					botTarget = spawnLocation;
 
-				//or, if the bot is our counterpart AND it can see us directly, it tries to join us.
-				if (playermovement.yourMatch == yourMatch && (!Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains))) {
-					botTarget = ourhero.transform.position;
-				}
+
 			}
 			yield return shortWait;
 
-			if (transform.position.x > 1000f) {
-				transform.position = new Vector3 (transform.position.x - 1000f, transform.position.y, transform.position.z);
-			}
 			if (audioSource.volume > 0.01 && audioSource.isPlaying && notEnded)
 				myColor.material.color = litColor;
 			else
 				myColor.material.color = dimColor;
 			//bots light up when they are talking to you or banging, but not to play the end music
 
-			yield return shortWait;
-
-			if (transform.position.z > 1000f) {
-				transform.position = new Vector3 (transform.position.x, transform.position.y, transform.position.z - 1000f);
-			}
 			distance = Vector3.Distance (transform.position, ourhero.transform.position);
 
 			withinRange = true;
@@ -516,13 +514,17 @@ public class BotMovement : MonoBehaviour
 			//rolling my own LOD. With this, the render thread is so low in overhead that there's no point optimizing further: we're physics bound.
 
 			if (playermovement.yourMatch == yourMatch) {
-				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position) * 4f; //Mathf.Sqrt()
+				playermovement.yourMatchDistance = Vector3.Distance (transform.position, ourhero.transform.position) * 4f;
 				playermovement.yourMatchOccluded = false;
 				playermovement.locationOfCounterpart = transform.position;
 				//this bot is your one true bot and we don't delete it or move it. We send the distance value to the 'ping' routine.
 				//also we update you with its location so bots looking for you can know if they see it.
 				if (Physics.Linecast (transform.position, ourhero.transform.position, onlyTerrains)) {
 					playermovement.yourMatchOccluded = true;
+				} else {
+					if (QualitySettings.maximumLODLevel == 1) 
+						playermovement.yourMatchDistance = Mathf.Sqrt(playermovement.yourMatchDistance);
+					//if we're in easy mode and you have line of sight, the pings accelerate lots.
 				}
 				//by doing this, we can see whether there's anything in the way of the ray between match and player
 				//If they're the same, we are NOT occluded and therefore we can hear the sonar beep better.
